@@ -27,6 +27,15 @@ export interface NovelPage {
   content: string;
   characterState: Character;
   glossaryState: GlossaryItem[];
+  arcNumber?: number; // which arc this page belongs to
+}
+
+// A story arc groups a range of chapters under one main event/theme
+export interface StoryArc {
+  arcNumber: number;
+  arcLength: number;     // randomly chosen between 20–40
+  startPage: number;     // 1-indexed page number where this arc begins
+  mainEvent: string;     // AI-generated theme / main conflict for this arc
 }
 
 export interface NovelState {

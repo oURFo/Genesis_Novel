@@ -30,7 +30,7 @@ import {
   HelpCircle,
   Clock
 } from "lucide-react";
-import { Character, GlossaryItem, NovelPage, GlossaryCategory, NovelState } from "./types";
+import { Character, GlossaryItem, NovelPage, GlossaryCategory, NovelState, StoryArc } from "./types";
 
 // Preset themes and starting prompts
 interface ThemePreset {
@@ -131,6 +131,62 @@ export default function App() {
   // Mobile UI Tabs ('character' | 'story' | 'glossary')
   const [mobileTab, setMobileTab] = useState<'character' | 'story' | 'glossary'>('story');
 
+  // Prefetch states for background pre-generation of the next chapter
+  const [prefetchedPage, setPrefetchedPage] = useState<NovelPage | null>(null);
+  const [isPrefetching, setIsPrefetching] = useState<boolean>(false);
+  // Stores the in-flight prefetch promise so handleWriteNextChapter can await it
+  const prefetchRef = useRef<{ promise: Promise<NovelPage | null>; forPage: number } | null>(null);
+
+  // Ending arc states (20-chapter epic ending generation)
+  const ENDING_ARC_TOTAL = 20;
+  const [isGeneratingEndingArc, setIsGeneratingEndingArc] = useState<boolean>(false);
+  const [endingArcProgress, setEndingArcProgress] = useState<{ current: number; total: number } | null>(null);
+
+  // Story structure arcs
+  const [storyArcs, setStoryArcs] = useState<StoryArc[]>([]);
+  const [currentArc, setCurrentArc] = useState<StoryArc | null>(null);
+
+  // Glossary popup
+  const [selectedGlossaryItem, setSelectedGlossaryItem] = useState<GlossaryItem | null>(null);
+
+  // Chapter list popup
+  const [showChapterList, setShowChapterList] = useState<boolean>(false);
+
+  // ── Story Arc helpers ──────────────────────────────────────────────────────
+
+  const randomArcLength = () => Math.floor(Math.random() * 21) + 20; // 20–40
+
+  const getArcPhase = (arc: StoryArc, pageNumber: number): 'transition' | 'development' | 'climax' | 'winding_down' => {
+    const pos = pageNumber - arc.startPage + 1;
+    const pct = pos / arc.arcLength;
+    if (pct <= 0.10) return 'transition';
+    if (pct <= 0.60) return 'development';
+    if (pct <= 0.85) return 'climax';
+    return 'winding_down';
+  };
+
+  const getArcContext = (
+    nextPageNumber: number,
+    arcs: StoryArc[]
+  ): { arc: StoryArc; isNewArc: boolean; prevArc: StoryArc | undefined } => {
+    const latestArc = arcs[arcs.length - 1];
+
+    if (!latestArc) {
+      const newArc: StoryArc = { arcNumber: 1, arcLength: randomArcLength(), startPage: 1, mainEvent: '待 AI 設計' };
+      return { arc: newArc, isNewArc: true, prevArc: undefined };
+    }
+
+    const arcEnd = latestArc.startPage + latestArc.arcLength - 1;
+    if (nextPageNumber > arcEnd) {
+      const newArc: StoryArc = { arcNumber: latestArc.arcNumber + 1, arcLength: randomArcLength(), startPage: nextPageNumber, mainEvent: '待 AI 設計' };
+      return { arc: newArc, isNewArc: true, prevArc: latestArc };
+    }
+
+    return { arc: latestArc, isNewArc: false, prevArc: arcs[arcs.length - 2] };
+  };
+
+  // ── End Story Arc helpers ───────────────────────────────────────────────────
+
   // Load saved session on mount
   useEffect(() => {
     const saved = localStorage.getItem("novel_workshop_autosave");
@@ -156,7 +212,9 @@ export default function App() {
         pages,
         currentPageIndex,
         isEnded,
-        isEndingMode
+        isEndingMode,
+        storyArcs,
+        currentArc
       };
       localStorage.setItem("novel_workshop_autosave", JSON.stringify(stateToSave));
     }
@@ -189,6 +247,8 @@ export default function App() {
       setCurrentPageIndex(savedSessionData.currentPageIndex || 0);
       setIsEnded(savedSessionData.isEnded || false);
       setIsEndingMode(savedSessionData.isEndingMode || false);
+      setStoryArcs(savedSessionData.storyArcs || []);
+      setCurrentArc(savedSessionData.currentArc || null);
       setIsPlaying(true);
       setError(null);
     }
@@ -229,8 +289,13 @@ export default function App() {
     setPages([]);
     setIsEnded(false);
     setIsEndingMode(false);
+    setPrefetchedPage(null);
+    prefetchRef.current = null;
 
     try {
+      // Initialize the first arc
+      const { arc: firstArc } = getArcContext(1, []);
+
       const data = await generateNovelChapter({
         startPrompt,
         pages: [],
@@ -238,8 +303,25 @@ export default function App() {
         currentCharacter: null,
         currentGlossary: [],
         customApiKey,
-        isEndingMode: false
+        isEndingMode: false,
+        arcContext: {
+          arcNumber: firstArc.arcNumber,
+          arcLength: firstArc.arcLength,
+          positionInArc: 1,
+          phase: 'transition',
+          mainEvent: firstArc.mainEvent,
+          isNewArc: true,
+          prevArcSummary: undefined
+        }
       });
+
+      // Save the arc (use AI's newArcEvent if returned)
+      const resolvedArc: StoryArc = {
+        ...firstArc,
+        mainEvent: data.newArcEvent || firstArc.mainEvent
+      };
+      setStoryArcs([resolvedArc]);
+      setCurrentArc(resolvedArc);
       
       // Save Chapter 1 Page
       const newPage: NovelPage = {
@@ -247,7 +329,8 @@ export default function App() {
         title: data.chapterTitle || "第一章：啟航",
         content: data.content,
         characterState: data.characterUpdate,
-        glossaryState: data.glossaryUpdates || []
+        glossaryState: data.glossaryUpdates || [],
+        arcNumber: resolvedArc.arcNumber
       };
 
       if (data.novelTitle) {
@@ -267,11 +350,56 @@ export default function App() {
 
   // Generate next chapter
   const handleWriteNextChapter = async () => {
+    const nextPageNumber = pages.length + 1;
+
+    // --- Case 1: Prefetch already completed, use it instantly ---
+    if (prefetchedPage && prefetchedPage.pageNumber === nextPageNumber) {
+      const page = prefetchedPage;
+      prefetchRef.current = null;
+      setPrefetchedPage(null);
+      setPages(prev => [...prev, page]);
+      setCurrentPageIndex(nextPageNumber - 1);
+      if (isEndingMode || (page.title && (page.title.includes("最終章") || page.title.includes("大結局") || page.title.includes("結局")))) {
+        setIsEnded(true);
+      }
+      return;
+    }
+
+    // --- Case 2: Prefetch is still in progress, wait for it ---
+    if (prefetchRef.current && prefetchRef.current.forPage === nextPageNumber) {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const page = await prefetchRef.current.promise;
+        prefetchRef.current = null;
+        setPrefetchedPage(null);
+        if (page) {
+          setPages(prev => [...prev, page]);
+          setCurrentPageIndex(nextPageNumber - 1);
+          if (isEndingMode || (page.title && (page.title.includes("最終章") || page.title.includes("大結局") || page.title.includes("結局")))) {
+            setIsEnded(true);
+          }
+          setIsLoading(false);
+          return;
+        }
+      } catch (_) {
+        // prefetch failed, fall through to normal generation
+      }
+      setIsLoading(false);
+    }
+
+    // --- Case 3: No prefetch available, generate normally ---
+    prefetchRef.current = null;
+    setPrefetchedPage(null);
+    setIsPrefetching(false);
     setIsLoading(true);
     setError(null);
 
-    const nextPageNumber = pages.length + 1;
     const lastPage = pages[pages.length - 1];
+
+    // Compute arc context
+    const { arc, isNewArc, prevArc } = getArcContext(nextPageNumber, storyArcs);
+    const positionInArc = nextPageNumber - arc.startPage + 1;
 
     try {
       const data = await generateNovelChapter({
@@ -285,8 +413,25 @@ export default function App() {
         currentCharacter: lastPage.characterState,
         currentGlossary: lastPage.glossaryState,
         customApiKey,
-        isEndingMode: isEndingMode
+        isEndingMode: isEndingMode,
+        arcContext: {
+          arcNumber: arc.arcNumber,
+          arcLength: arc.arcLength,
+          positionInArc,
+          phase: getArcPhase(arc, nextPageNumber),
+          mainEvent: arc.mainEvent,
+          isNewArc,
+          prevArcSummary: prevArc ? prevArc.mainEvent : undefined
+        }
       });
+
+      // Update arc state if new arc started
+      let resolvedArc = arc;
+      if (isNewArc) {
+        resolvedArc = { ...arc, mainEvent: data.newArcEvent || arc.mainEvent };
+        setStoryArcs(prev => [...prev, resolvedArc]);
+        setCurrentArc(resolvedArc);
+      }
 
       // Merge glossaries
       const mergedGlossaryMap = new Map<string, GlossaryItem>();
@@ -301,13 +446,13 @@ export default function App() {
         title: data.chapterTitle || `第 ${nextPageNumber} 章`,
         content: data.content,
         characterState: data.characterUpdate,
-        glossaryState: newGlossaryState
+        glossaryState: newGlossaryState,
+        arcNumber: resolvedArc.arcNumber
       };
 
       setPages(prev => [...prev, newPage]);
-      setCurrentPageIndex(nextPageNumber - 1); // Flip to the newly generated page
+      setCurrentPageIndex(nextPageNumber - 1);
       
-      // Detect if chapter has reached finale
       if (isEndingMode || (data.chapterTitle && (data.chapterTitle.includes("最終章") || data.chapterTitle.includes("大結局") || data.chapterTitle.includes("結局")))) {
         setIsEnded(true);
       }
@@ -328,11 +473,171 @@ export default function App() {
       setError(null);
       setIsEnded(false);
       setIsEndingMode(false);
+      setPrefetchedPage(null);
+      prefetchRef.current = null;
+      setIsPrefetching(false);
+      setIsGeneratingEndingArc(false);
+      setEndingArcProgress(null);
+      setStoryArcs([]);
+      setCurrentArc(null);
       // Clean up autosave when resetting so they don't get prompted for stale session
       localStorage.removeItem("novel_workshop_autosave");
       setHasSavedSession(false);
       setSavedSessionData(null);
     }
+  };
+
+  // Background prefetch: generate the next chapter silently while user is reading
+  const startPrefetch = (currentPages: NovelPage[], nextPageNum: number, endingMode: boolean) => {
+    if (prefetchRef.current?.forPage === nextPageNum) return; // already running for this page
+
+    prefetchRef.current = null;
+    setPrefetchedPage(null);
+    setIsPrefetching(true);
+
+    const lastPage = currentPages[currentPages.length - 1];
+
+    // Compute arc context for prefetch
+    const { arc, isNewArc, prevArc } = getArcContext(nextPageNum, storyArcs);
+    const positionInArc = nextPageNum - arc.startPage + 1;
+
+    const promise = generateNovelChapter({
+      startPrompt,
+      pages: currentPages.map(p => ({ pageNumber: p.pageNumber, title: p.title, content: p.content })),
+      nextPageNumber: nextPageNum,
+      currentCharacter: lastPage.characterState,
+      currentGlossary: lastPage.glossaryState,
+      customApiKey,
+      isEndingMode: endingMode,
+      arcContext: {
+        arcNumber: arc.arcNumber,
+        arcLength: arc.arcLength,
+        positionInArc,
+        phase: getArcPhase(arc, nextPageNum),
+        mainEvent: arc.mainEvent,
+        isNewArc,
+        prevArcSummary: prevArc ? prevArc.mainEvent : undefined
+      }
+    }).then(data => {
+      const mergedMap = new Map<string, GlossaryItem>();
+      lastPage.glossaryState.forEach(i => mergedMap.set(i.name, i));
+      (data.glossaryUpdates || []).forEach((i: GlossaryItem) => mergedMap.set(i.name, i));
+
+      // Update arc state if new arc
+      let resolvedArc = arc;
+      if (isNewArc) {
+        resolvedArc = { ...arc, mainEvent: data.newArcEvent || arc.mainEvent };
+        setStoryArcs(prev => {
+          const already = prev.find(a => a.arcNumber === resolvedArc.arcNumber);
+          return already ? prev : [...prev, resolvedArc];
+        });
+        setCurrentArc(resolvedArc);
+      }
+
+      const page: NovelPage = {
+        pageNumber: nextPageNum,
+        title: data.chapterTitle || `第 ${nextPageNum} 章`,
+        content: data.content,
+        characterState: data.characterUpdate,
+        glossaryState: Array.from(mergedMap.values()),
+        arcNumber: resolvedArc.arcNumber
+      };
+
+      if (prefetchRef.current?.forPage === nextPageNum) {
+        setPrefetchedPage(page);
+        setIsPrefetching(false);
+      }
+      return page;
+    }).catch(err => {
+      console.warn("Background prefetch failed (silent):", err);
+      if (prefetchRef.current?.forPage === nextPageNum) {
+        setIsPrefetching(false);
+      }
+      return null;
+    });
+
+    prefetchRef.current = { promise, forPage: nextPageNum };
+  };
+
+  // Trigger prefetch when user is on the latest written page
+  useEffect(() => {
+    if (!isPlaying || pages.length === 0 || isLoading || isEnded) return;
+    if (currentPageIndex !== pages.length - 1) return; // not on the latest page
+    if (prefetchRef.current?.forPage === pages.length + 1) return; // already prefetching/done
+
+    startPrefetch(pages, pages.length + 1, isEndingMode);
+  }, [currentPageIndex, pages.length, isPlaying, isLoading, isEnded, isEndingMode]);
+
+  // Invalidate prefetch when ending mode toggles (prompt content changes)
+  useEffect(() => {
+    prefetchRef.current = null;
+    setPrefetchedPage(null);
+    setIsPrefetching(false);
+  }, [isEndingMode]);
+
+  // Generate a full 20-chapter epic ending arc
+  const handleGenerateEndingArc = async () => {
+    if (!window.confirm(`確定要啟動史詩大結局弧嗎？\n系統將自動連續生成 ${ENDING_ARC_TOTAL} 章結局篇章，完成整部小說的精彩收尾。\n\n生成期間將暫時鎖定翻頁操作，請耐心等待。`)) return;
+
+    // Cancel any in-flight prefetch
+    prefetchRef.current = null;
+    setPrefetchedPage(null);
+    setIsPrefetching(false);
+    setIsGeneratingEndingArc(true);
+    setError(null);
+
+    let currentPages = [...pages];
+
+    for (let step = 1; step <= ENDING_ARC_TOTAL; step++) {
+      setEndingArcProgress({ current: step, total: ENDING_ARC_TOTAL });
+
+      const isLastChapter = step === ENDING_ARC_TOTAL;
+      const nextPageNumber = currentPages.length + 1;
+      const lastPage = currentPages[currentPages.length - 1];
+
+      try {
+        const data = await generateNovelChapter({
+          startPrompt,
+          pages: currentPages.map(p => ({ pageNumber: p.pageNumber, title: p.title, content: p.content })),
+          nextPageNumber,
+          currentCharacter: lastPage.characterState,
+          currentGlossary: lastPage.glossaryState,
+          customApiKey,
+          isEndingMode: isLastChapter,
+          endingArcStep: isLastChapter ? undefined : step,
+          endingArcTotal: isLastChapter ? undefined : ENDING_ARC_TOTAL
+        });
+
+        const mergedMap = new Map<string, GlossaryItem>();
+        lastPage.glossaryState.forEach(i => mergedMap.set(i.name, i));
+        (data.glossaryUpdates || []).forEach((i: GlossaryItem) => mergedMap.set(i.name, i));
+
+        const newPage: NovelPage = {
+          pageNumber: nextPageNumber,
+          title: data.chapterTitle || `第 ${nextPageNumber} 章`,
+          content: data.content,
+          characterState: data.characterUpdate,
+          glossaryState: Array.from(mergedMap.values())
+        };
+
+        currentPages = [...currentPages, newPage];
+        // Update pages state progressively so the user can see progress
+        setPages([...currentPages]);
+
+        if (isLastChapter) {
+          setCurrentPageIndex(newPage.pageNumber - 1);
+        }
+      } catch (err: any) {
+        console.error("Ending arc generation failed at step", step, err);
+        setError(`結局弧第 ${step} 章生成失敗：${err.message || "請稍後重試。"}`);
+        break;
+      }
+    }
+
+    setIsEnded(true);
+    setIsEndingMode(false);
+    setIsGeneratingEndingArc(false);
+    setEndingArcProgress(null);
   };
 
   // Get current active states based on page viewing and sync toggle
@@ -452,6 +757,15 @@ export default function App() {
 
           {isPlaying && (
             <>
+              {/* Chapter list button */}
+              <button
+                onClick={() => setShowChapterList(true)}
+                className="flex items-center space-x-1 px-3 py-1.5 rounded border border-editorial-border bg-white hover:bg-paper-deep text-xs font-semibold text-ink transition cursor-pointer"
+                title="查看所有章節目錄"
+              >
+                <Layers className="w-3.5 h-3.5 text-editorial-accent" />
+                <span className="hidden md:inline">章節目錄</span>
+              </button>
               {/* Font size control */}
               <div className="hidden md:flex items-center bg-white border border-editorial-border rounded p-0.5" id="font-controls">
                 <button 
@@ -516,6 +830,57 @@ export default function App() {
           )}
         </div>
       </header>
+
+      {/* CHAPTER LIST MODAL */}
+      {showChapterList && (
+        <div className="fixed inset-0 bg-neutral-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in" id="chapter-list-modal">
+          <div className="bg-paper border border-editorial-border rounded shadow-xl max-w-lg w-full max-h-[80vh] flex flex-col overflow-hidden">
+            <div className="bg-paper-dark px-6 py-4 border-b border-editorial-border flex items-center justify-between shrink-0">
+              <h3 className="font-serif font-bold text-ink flex items-center gap-2">
+                <Layers className="w-4 h-4 text-editorial-accent" />
+                章節目錄
+                <span className="text-[11px] text-ink-light font-sans font-normal ml-1">共 {pages.length} 章</span>
+              </h3>
+              <button onClick={() => setShowChapterList(false)} className="text-ink-light hover:text-ink text-sm font-bold cursor-pointer">✕</button>
+            </div>
+
+            <div className="overflow-y-auto flex-1 p-3 space-y-1.5">
+              {pages.map((page, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => { setCurrentPageIndex(idx); setShowChapterList(false); }}
+                  className={`w-full text-left px-4 py-3 rounded border transition-all flex items-center gap-3 group ${
+                    idx === currentPageIndex
+                      ? 'bg-editorial-accent/10 border-editorial-accent text-editorial-accent'
+                      : 'bg-white border-editorial-border hover:border-editorial-accent/50 hover:bg-paper text-ink'
+                  }`}
+                >
+                  <span className={`text-xs font-mono shrink-0 w-8 text-right ${idx === currentPageIndex ? 'text-editorial-accent font-bold' : 'text-ink-light'}`}>
+                    {page.pageNumber}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-sm font-serif font-semibold truncate ${idx === currentPageIndex ? 'text-editorial-accent' : 'text-ink group-hover:text-editorial-accent transition-colors'}`}>
+                      {page.title}
+                    </p>
+                  </div>
+                  {idx === currentPageIndex && (
+                    <span className="text-[10px] bg-editorial-accent text-white px-1.5 py-0.5 rounded font-bold shrink-0">閱讀中</span>
+                  )}
+                </button>
+              ))}
+              {pages.length === 0 && (
+                <p className="text-center text-sm text-ink-light font-serif py-8">尚未生成任何章節</p>
+              )}
+            </div>
+
+            <div className="bg-paper-dark px-6 py-3 border-t border-editorial-border flex justify-end shrink-0">
+              <button onClick={() => setShowChapterList(false)} className="px-5 py-2 bg-ink text-white text-xs font-bold rounded hover:bg-neutral-800 transition cursor-pointer">
+                關閉
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* SETTINGS MODAL */}
       {showSettings && (
@@ -763,6 +1128,54 @@ export default function App() {
       ) : (
         /* PLAYING NOVEL ACTIVE VIEW (isPlaying === true) */
         <main className="flex-1 w-full max-w-[1500px] mx-auto px-4 py-4 flex flex-col lg:grid lg:grid-cols-12 gap-5 overflow-hidden">
+          
+          {/* ENDING ARC PROGRESS OVERLAY */}
+          {isGeneratingEndingArc && endingArcProgress && (
+            <div className="fixed inset-0 bg-neutral-900/75 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in">
+              <div className="bg-paper border border-editorial-border rounded shadow-2xl max-w-md w-full mx-4 overflow-hidden">
+                <div className="bg-rose-950 px-6 py-4 flex items-center gap-3">
+                  <Trophy className="w-5 h-5 text-amber-400 animate-pulse shrink-0" />
+                  <h3 className="font-serif font-bold text-white text-base">史詩大結局生成中</h3>
+                </div>
+                <div className="p-6 space-y-5">
+                  <p className="text-sm text-ink font-serif leading-relaxed text-center">
+                    AI 正在精心撰寫結局弧第
+                    <span className="text-2xl font-bold text-editorial-accent mx-2 font-serif">{endingArcProgress.current}</span>
+                    章，共 {endingArcProgress.total} 章
+                  </p>
+
+                  {/* Progress bar */}
+                  <div className="w-full bg-paper-deep rounded-full h-3 border border-editorial-border overflow-hidden">
+                    <div
+                      className="h-full bg-editorial-accent transition-all duration-700 ease-out rounded-full"
+                      style={{ width: `${(endingArcProgress.current / endingArcProgress.total) * 100}%` }}
+                    />
+                  </div>
+
+                  <div className="flex justify-between text-[11px] text-ink-light font-mono">
+                    <span>第 {endingArcProgress.current} / {endingArcProgress.total} 章</span>
+                    <span>{Math.round((endingArcProgress.current / endingArcProgress.total) * 100)}% 完成</span>
+                  </div>
+
+                  <div className="bg-rose-50 border border-rose-200 rounded p-3 text-center">
+                    <p className="text-xs text-rose-800 font-serif animate-pulse">
+                      {endingArcProgress.current <= Math.floor(endingArcProgress.total * 0.4)
+                        ? "📖 佈局收束各條伏筆，命運走向交匯..."
+                        : endingArcProgress.current <= Math.floor(endingArcProgress.total * 0.7)
+                          ? "⚔️ 最終決戰序幕拉開，高潮漸近..."
+                          : endingArcProgress.current < endingArcProgress.total
+                            ? "🔥 決戰白熱化，史詩結局即將揭幕..."
+                            : "✨ 撰寫最終章，完美收尾故事..."}
+                    </p>
+                  </div>
+
+                  <p className="text-[11px] text-ink-light text-center font-serif">
+                    翻頁操作已暫時鎖定，生成完畢後將自動跳至最終章
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
           
           {/* MOBILE TABS (only visible under lg screen) */}
           <div className="lg:hidden flex border border-editorial-border mb-2 p-0.5 bg-paper-dark rounded" id="mobile-tabs">
@@ -1116,7 +1529,7 @@ export default function App() {
             <div className="mt-4 bg-paper-dark border border-editorial-border rounded p-3 shadow-xs flex flex-wrap items-center justify-between gap-3">
               <button
                 onClick={() => setCurrentPageIndex((prev) => Math.max(0, prev - 1))}
-                disabled={currentPageIndex === 0 || isLoading}
+                disabled={currentPageIndex === 0 || isLoading || isGeneratingEndingArc}
                 className="flex items-center space-x-1.5 px-4 py-2 bg-white hover:bg-paper text-ink rounded border border-editorial-border text-xs font-semibold disabled:opacity-30 disabled:hover:bg-white transition cursor-pointer"
                 id="btn-prev-page"
               >
@@ -1131,31 +1544,37 @@ export default function App() {
                     正在續寫空白頁...
                   </span>
                 )}
+                {currentPageIndex < pages.length && isPrefetching && (
+                  <span className="text-emerald-600 text-[10px] font-bold ml-2 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded animate-pulse">
+                    ⚡ 下一章預備中...
+                  </span>
+                )}
+                {currentPageIndex < pages.length && prefetchedPage && !isPrefetching && (
+                  <span className="text-emerald-700 text-[10px] font-bold ml-2 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded">
+                    ✓ 下一章已就緒
+                  </span>
+                )}
               </span>
 
               {/* IMMERSIVE ENDING MODE CONTROL */}
               <div className="flex items-center space-x-2 bg-white border border-editorial-border rounded px-3 py-1.5" id="ending-mode-toggle">
                 <span className="text-xs text-ink-light font-serif flex items-center gap-1">
                   <Trophy className="w-3.5 h-3.5 text-editorial-accent" />
-                  大結局收尾：
+                  大結局：
                 </span>
                 <button
-                  onClick={() => setIsEndingMode(!isEndingMode)}
-                  disabled={pages.length === 0}
-                  className={`text-xs px-2.5 py-0.5 rounded transition font-bold font-serif ${
-                    isEndingMode 
-                      ? 'bg-rose-50 text-rose-800 border border-rose-200' 
-                      : 'bg-white text-ink border border-editorial-border hover:bg-paper cursor-pointer'
-                  }`}
-                  title="啟用後，下一章節將被寫為完美高潮的終章結局。"
+                  onClick={handleGenerateEndingArc}
+                  disabled={pages.length === 0 || isLoading || isGeneratingEndingArc || isEnded}
+                  className="text-xs px-2.5 py-0.5 rounded transition font-bold font-serif bg-rose-50 text-rose-800 border border-rose-200 hover:bg-rose-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                  title={`啟動後系統將自動生成 ${ENDING_ARC_TOTAL} 章結局篇章完成整部小說`}
                 >
-                  {isEndingMode ? "🔥 已啟用收尾" : "💤 未啟用"}
+                  {isEnded ? "✅ 已完結" : `🔥 啟動史詩大結局 (${ENDING_ARC_TOTAL}章)`}
                 </button>
               </div>
 
               <button
                 onClick={() => setCurrentPageIndex((prev) => Math.min(pages.length, prev + 1))}
-                disabled={currentPageIndex >= pages.length || isLoading}
+                disabled={currentPageIndex >= pages.length || isLoading || isGeneratingEndingArc}
                 className="flex items-center space-x-1.5 px-4 py-2 bg-white hover:bg-paper text-ink rounded border border-editorial-border text-xs font-semibold disabled:opacity-30 disabled:hover:bg-white transition cursor-pointer"
                 id="btn-next-page"
               >
@@ -1213,17 +1632,18 @@ export default function App() {
             </div>
 
             {/* List of Nouns */}
-            <div className="flex-1 overflow-y-auto space-y-3.5 pr-0.5" id="glossary-list">
+            <div className="flex-1 overflow-y-auto space-y-3.5 pr-0.5 min-h-0" id="glossary-list">
               {filteredGlossary.length > 0 ? (
                 filteredGlossary.map((item, idx) => {
                   const isHighlighted = glossaryHighlights.includes(item.name);
                   return (
                     <div 
                       key={idx} 
-                      className={`p-3.5 rounded border transition-all duration-200 relative overflow-hidden ${
+                      onClick={() => setSelectedGlossaryItem(item)}
+                      className={`p-3.5 rounded border transition-all duration-200 relative overflow-hidden cursor-pointer hover:shadow-sm ${
                         isHighlighted 
-                          ? "border-editorial-accent bg-editorial-accent/5" 
-                          : "border-editorial-border bg-white"
+                          ? "border-editorial-accent bg-editorial-accent/5 hover:bg-editorial-accent/10" 
+                          : "border-editorial-border bg-white hover:border-editorial-accent/50 hover:bg-paper"
                       }`}
                     >
                       <div className="flex items-center justify-between mb-2 relative z-10">
@@ -1258,6 +1678,101 @@ export default function App() {
           </section>
 
         </main>
+      )}
+
+      {/* GLOSSARY ITEM POPUP MODAL */}
+      {selectedGlossaryItem && (
+        <div
+          className="fixed inset-0 bg-neutral-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fade-in"
+          onClick={() => setSelectedGlossaryItem(null)}
+        >
+          <div
+            className="bg-paper border border-editorial-border rounded shadow-xl max-w-lg w-full overflow-hidden"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="bg-paper-dark px-6 py-4 border-b border-editorial-border flex items-start justify-between gap-4">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="text-2xl select-none shrink-0">
+                  {selectedGlossaryItem.category === "人物" ? "👤"
+                    : selectedGlossaryItem.category === "地點" ? "🗺️"
+                    : selectedGlossaryItem.category === "組織" ? "🏛️"
+                    : selectedGlossaryItem.category === "道具" ? "💎"
+                    : "📌"}
+                </div>
+                <div className="min-w-0">
+                  <h3 className="font-serif font-bold text-ink text-xl truncate">{selectedGlossaryItem.name}</h3>
+                  <span className={`text-[10px] px-2 py-0.5 rounded border uppercase tracking-widest font-sans font-bold mt-1 inline-block ${getCategoryStyles(selectedGlossaryItem.category)}`}>
+                    {selectedGlossaryItem.category}
+                  </span>
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedGlossaryItem(null)}
+                className="text-ink-light hover:text-ink text-sm font-bold cursor-pointer shrink-0 mt-0.5"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6">
+              {glossaryHighlights.includes(selectedGlossaryItem.name) && (
+                <div className="mb-4 flex items-center gap-2 bg-editorial-accent/10 border border-editorial-accent/30 rounded px-3 py-2">
+                  <Sparkle className="w-3.5 h-3.5 text-editorial-accent fill-current shrink-0" />
+                  <span className="text-xs text-editorial-accent font-bold font-sans">本章節有最新情報更新</span>
+                </div>
+              )}
+              <p className="text-sm text-ink leading-loose font-serif text-justify-align whitespace-pre-wrap">
+                {selectedGlossaryItem.description}
+              </p>
+
+              {/* Related characters (only for 人物 category) */}
+              {selectedGlossaryItem.category === '人物' && (() => {
+                const me = selectedGlossaryItem.name;
+                const related = currentGlossary.filter(g =>
+                  g.category === '人物' &&
+                  g.name !== me &&
+                  (g.description.includes(me) || selectedGlossaryItem.description.includes(g.name))
+                );
+                if (related.length === 0) return null;
+                return (
+                  <div className="mt-5 pt-4 border-t border-editorial-border">
+                    <h4 className="text-[11px] font-bold text-ink-light uppercase tracking-widest mb-2.5 flex items-center gap-1.5">
+                      <User className="w-3.5 h-3.5 text-editorial-accent" />
+                      關係人物
+                    </h4>
+                    <div className="space-y-2">
+                      {related.map((rel, i) => (
+                        <button
+                          key={i}
+                          onClick={() => setSelectedGlossaryItem(rel)}
+                          className="w-full text-left flex items-start gap-2.5 p-2.5 rounded border border-editorial-border bg-paper hover:bg-white hover:border-editorial-accent/50 transition group"
+                        >
+                          <span className="text-lg shrink-0 leading-none mt-0.5">👤</span>
+                          <div className="min-w-0">
+                            <p className="text-sm font-serif font-semibold text-ink group-hover:text-editorial-accent transition-colors truncate">{rel.name}</p>
+                            <p className="text-xs text-ink-light line-clamp-2 leading-relaxed font-serif mt-0.5">{rel.description}</p>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="bg-paper-dark px-6 py-3 border-t border-editorial-border flex justify-end">
+              <button
+                onClick={() => setSelectedGlossaryItem(null)}
+                className="px-5 py-2 bg-ink text-white text-xs font-bold rounded hover:bg-neutral-800 transition cursor-pointer"
+              >
+                關閉
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* FOOTER */}

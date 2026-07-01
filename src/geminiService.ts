@@ -13,13 +13,25 @@ export interface GeneratePayload {
   currentGlossary: GlossaryItem[];
   customApiKey?: string | null;
   isEndingMode?: boolean;
+  endingArcStep?: number;
+  endingArcTotal?: number;
+  // Story arc context
+  arcContext?: {
+    arcNumber: number;
+    arcLength: number;
+    positionInArc: number;   // 1-indexed chapter within this arc
+    phase: 'transition' | 'development' | 'climax' | 'winding_down';
+    mainEvent: string;       // arc's main event/theme
+    isNewArc: boolean;       // true if this is the first chapter of a new arc
+    prevArcSummary?: string; // brief summary of previous arc's main event
+  };
 }
 
 /**
  * Builds the context prompt to send to Gemini API
  */
 export function buildPromptText(payload: GeneratePayload): string {
-  const { startPrompt, pages, nextPageNumber, currentCharacter, currentGlossary, isEndingMode } = payload;
+  const { startPrompt, pages, nextPageNumber, currentCharacter, currentGlossary, isEndingMode, endingArcStep, endingArcTotal, arcContext } = payload;
   
   let promptText = `你是一個專業的小說家和角色扮演遊戲(RPG)系統。
 【玩家初始設定/提示詞】：
@@ -56,12 +68,40 @@ ${startPrompt}
     promptText += `\n`;
   }
 
+  if (arcContext && !isEndingMode) {
+    const phaseDesc: Record<string, string> = {
+      transition:   '【銜接過渡期】本章負責承接上一個故事弧，讓讀者自然過渡到本弧的新局面，伏筆逐漸展開但尚未爆發。',
+      development:  '【劇情鋪陳期】本章著重深化角色關係、世界觀擴展、推進主軸衝突，節奏穩健，張力逐步累積。',
+      climax:       '【高潮爆發期】本章應呈現本弧最激烈的對決、最關鍵的抉擇或最震撼的真相揭露，情緒張力拉至最高點。',
+      winding_down: '【收尾過渡期】本章讓高潮餘波漸息，整理本弧的結果與影響，並在結尾埋下引向下一段旅程的種子。'
+    };
+
+    promptText += `【📚 故事結構指引 — 第 ${arcContext.arcNumber} 故事弧，第 ${arcContext.positionInArc}/${arcContext.arcLength} 章】
+本弧主軸事件：「${arcContext.mainEvent}」
+當前階段：${phaseDesc[arcContext.phase]}
+${arcContext.prevArcSummary ? `前一弧線回顧：${arcContext.prevArcSummary}` : ''}
+${arcContext.isNewArc ? '⚡ 本章為新故事弧的開篇章節，請自然地從上一段落過渡，同時埋下本弧主軸衝突的種子。如需設計本弧的核心主軸，請在 newArcEvent 欄位回傳你設計的本弧主軸事件（30字內）。' : ''}
+【重要】不要向讀者明確告知「故事弧」或「結構」等元概念，一切以沉浸式小說敘事呈現。
+\n`;
+  }
+
   if (isEndingMode) {
     promptText += `【💥 CRITICAL INSTRUCTION: 故事終章大結局 💥】：
 現在要為這部小說寫下「大結局最終章」。
 1. 請在此頁讓故事迎來最終高潮並完美收尾、解答主線懸念，寫下感人、熱血或餘韻悠長的精彩大結局！
 2. 章節標題 (chapterTitle) 必須包含「最終章」或「大結局」字樣，例如：「最終章：光芒彼岸」或「大結局：破曉微光」。
 3. 內容必須是一個完整而宏大的完結情節，絕對不要再留下新的懸念，讓故事在此頁完全結束。
+\n`;
+  } else if (endingArcStep && endingArcTotal) {
+    const climaxStart = Math.floor(endingArcTotal * 0.6);
+    promptText += `【📖 史詩大結局弧 - 第 ${endingArcStep}/${endingArcTotal} 章】：
+現在正在撰寫大結局篇章弧的第 ${endingArcStep} 章（全弧共 ${endingArcTotal} 章）。
+${endingArcStep <= climaxStart
+  ? `1. 本章應積極推進主線伏筆收束、人物決心升起、命運走向決戰，為後續高潮鋪墊。`
+  : `1. 本章已進入最終決戰/關鍵衝突階段，請呈現驚心動魄的激烈對抗或情感爆發。`
+}
+2. 絕對不要在本章提前結束故事，必須留有餘韻延伸到下一章（章末應充滿張力與懸念）。
+3. 章節標題請體現結局弧氛圍，如「第X章：黎明前的黑暗」，但不可使用「最終章」或「大結局」字樣（那保留給最後一章）。
 \n`;
   }
 
@@ -146,12 +186,15 @@ export function getResponseSchema() {
           },
           required: ["name", "category", "description"]
         }
+      },
+      newArcEvent: {
+        type: "STRING",
+        description: "（選填，僅在新故事弧開篇時填寫）請用 30 字以內描述本故事弧的核心主軸事件，例如：「追查暗殺主角的神秘黑衣組織，並揭露其與帝國的關係」。非新弧開篇可省略此欄。"
       }
     },
     required: ["novelTitle", "chapterTitle", "content", "characterUpdate", "glossaryUpdates"]
   };
 }
-
 /**
  * Direct client-side generation using custom API key to support 100% serverless static sites
  */
@@ -234,7 +277,10 @@ export async function generateNovelChapter(payload: GeneratePayload): Promise<an
       nextPageNumber: payload.nextPageNumber,
       currentCharacter: payload.currentCharacter,
       currentGlossary: payload.currentGlossary,
-      isEndingMode: payload.isEndingMode
+      isEndingMode: payload.isEndingMode,
+      endingArcStep: payload.endingArcStep,
+      endingArcTotal: payload.endingArcTotal,
+      arcContext: payload.arcContext
     })
   });
 
