@@ -1,0 +1,6 @@
+{
+  "name": "虛擬小說產生器",
+  "description": "一個結合 AI 創生的虛擬小說閱讀與創作平台。中央為小說展示，左側自動同步主角屬性與狀態，右側即時整理出現的名詞與世界觀，隨讀隨記，支援翻頁與前後續寫。",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

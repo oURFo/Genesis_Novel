@@ -1,0 +1,65 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;500;700;900&family=Noto+Sans+TC:wght@300;400;500;700;900&family=JetBrains+Mono:wght@400;500&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Noto Sans TC", sans-serif;
+  --font-serif: "Noto Serif TC", serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  --color-paper: #fdfcf8;
+  --color-paper-dark: #fbfaf5;
+  --color-paper-deep: #f5f4ed;
+  --color-ink: #2a2a2a;
+  --color-ink-light: #5a5a55;
+  --color-editorial-border: #e2e2d9;
+  --color-editorial-accent: #8c7851;
+}
+
+/* Scrollbar Styles in alignment with the editorial theme */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #fbfaf5;
+}
+::-webkit-scrollbar-thumb {
+  background: #e2e2d9;
+  border-radius: 2px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #8c7851;
+}
+
+/* Custom styled classes for the print/editorial theme */
+.app-border-layout {
+  border: 12px solid #fdfcf8;
+}
+
+.dashed-border {
+  border-bottom: 1px dashed #e2e2d9;
+}
+
+.editorial-card {
+  background: #fbfaf5;
+  border: 1px solid #e2e2d9;
+}
+
+.editorial-shadow {
+  box-shadow: 0 4px 20px rgba(140, 120, 81, 0.05);
+}
+
+.input-editorial {
+  border: 1px solid #e2e2d9;
+  background: #ffffff;
+  color: #2a2a2a;
+}
+.input-editorial:focus {
+  border-color: #8c7851;
+  outline: none;
+}
+
+.text-justify-align {
+  text-align: justify;
+  text-justify: inter-word;
+}
