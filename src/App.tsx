@@ -1224,7 +1224,7 @@ export default function App() {
             id="character-sidebar"
             className={`${
               mobileTab === 'character' ? 'block' : 'hidden lg:block'
-            } lg:col-span-3 bg-paper-dark border border-editorial-border rounded p-5 flex flex-col max-h-[calc(100vh-130px)] lg:max-h-[calc(100vh-100px)] overflow-y-auto shadow-xs`}
+            } lg:col-span-3 bg-paper-dark border border-editorial-border rounded p-5 flex flex-col h-[calc(100vh-130px)] lg:h-[calc(100vh-100px)] overflow-y-auto shadow-xs`}
           >
             {currentCharacter ? (
               <div className="space-y-5">
@@ -1590,8 +1590,8 @@ export default function App() {
           <section 
             id="glossary-sidebar"
             className={`${
-              mobileTab === 'glossary' ? 'block' : 'hidden lg:block'
-            } lg:col-span-3 bg-paper-dark border border-editorial-border rounded p-5 flex flex-col max-h-[calc(100vh-130px)] lg:max-h-[calc(100vh-100px)] overflow-hidden shadow-xs`}
+              mobileTab === 'glossary' ? 'flex' : 'hidden lg:flex'
+            } lg:col-span-3 bg-paper-dark border border-editorial-border rounded p-5 flex-col h-[calc(100vh-130px)] lg:h-[calc(100vh-100px)] overflow-hidden shadow-xs`}
           >
             {/* Header Title */}
             <div className="sidebar-title flex items-center justify-between pb-2 border-b border-editorial-border mb-4">
