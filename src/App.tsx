@@ -1121,6 +1121,36 @@ export default function App() {
               </div>
             </div>
 
+            {/* API Key input — always visible on mobile, also helpful on desktop */}
+            <div className="mb-6 pt-5 border-t border-editorial-border">
+              <label className="block text-xs font-bold text-ink uppercase tracking-widest mb-2 flex items-center justify-between font-sans">
+                <span>🔑 Gemini API 金鑰（必填）</span>
+                {customApiKey ? (
+                  <span className="text-[10px] text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded font-bold">
+                    ● 已設定
+                  </span>
+                ) : (
+                  <span className="text-[10px] text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded font-bold">
+                    ● 未設定
+                  </span>
+                )}
+              </label>
+              <input
+                type="password"
+                value={customApiKey}
+                onChange={(e) => {
+                  setCustomApiKey(e.target.value);
+                  localStorage.setItem("user_gemini_api_key", e.target.value);
+                }}
+                placeholder="貼上您的 Gemini API Key（從 aistudio.google.com 免費取得）"
+                className="w-full bg-white border border-editorial-border rounded px-3 py-2.5 text-sm text-ink placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-editorial-accent focus:border-editorial-accent transition font-mono"
+              />
+              <p className="text-[11px] text-ink-light mt-1.5 leading-relaxed">
+                金鑰僅儲存於本機瀏覽器，不會傳送至任何伺服器。
+                前往 <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="text-editorial-accent underline">Google AI Studio</a> 免費取得。
+              </p>
+            </div>
+
             {/* Start button */}
             <div className="flex justify-center">
               <button
