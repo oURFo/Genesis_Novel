@@ -951,7 +951,7 @@ export default function App() {
                 </p>
                 <button
                   onClick={() => {
-                    const novelText = pages.map(p => `## ${p.title}\n\n${p.content}`).join("\n\n");
+                    const novelText = pages.map(p => `## ${p.title}\n\n${p.content.replace(/\\n/g, '\n')}`).join("\n\n");
                     const blob = new Blob([`# ${novelTitle}\n\n初始起點：\n${startPrompt}\n\n${novelText}`], { type: "text/markdown;charset=utf-8" });
                     const url = URL.createObjectURL(blob);
                     const link = document.createElement("a");
@@ -1425,7 +1425,9 @@ export default function App() {
                     {/* Render paragraph by paragraph with extra clear and beautiful spacing */}
                     {pages[currentPageIndex].content ? (
                       <div className="space-y-6 sm:space-y-7 md:space-y-8">
-                        {pages[currentPageIndex].content.split("\n").map((para, idx) => {
+                        {pages[currentPageIndex].content
+                          .replace(/\\n/g, '\n')
+                          .split("\n").map((para, idx) => {
                           const trimmed = para.trim();
                           if (!trimmed) return null;
                           
@@ -1465,7 +1467,7 @@ export default function App() {
                             <div className="flex flex-col sm:flex-row gap-3 justify-center">
                               <button
                                 onClick={() => {
-                                  const novelText = pages.map(p => `## ${p.title}\n\n${p.content}`).join("\n\n");
+                                  const novelText = pages.map(p => `## ${p.title}\n\n${p.content.replace(/\\n/g, '\n')}`).join("\n\n");
                                   const blob = new Blob([`# ${novelTitle}\n\n初始起點：\n${startPrompt}\n\n${novelText}`], { type: "text/markdown;charset=utf-8" });
                                   const url = URL.createObjectURL(blob);
                                   const link = document.createElement("a");
