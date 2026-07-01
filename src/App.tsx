@@ -98,7 +98,8 @@ import {
   Trophy, 
   LogOut, 
   Check, 
-  Info 
+  Info,
+  X
 } from "lucide-react";
 
 export default function App() {
@@ -128,8 +129,10 @@ export default function App() {
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [selectedCategory, setSelectedCategory] = useState<GlossaryCategory | "全部">("全部");
   
-  // Mobile UI Tabs ('character' | 'story' | 'glossary')
-  const [mobileTab, setMobileTab] = useState<'character' | 'story' | 'glossary'>('story');
+  // Mobile UI states
+  const [mobileDrawerOpen, setMobileDrawerOpen] = useState<boolean>(false);
+  const [mobileDrawerTab, setMobileDrawerTab] = useState<'glossary' | 'settings'>('glossary');
+  const [mobileCharSheetOpen, setMobileCharSheetOpen] = useState<boolean>(false);
 
   // Prefetch states for background pre-generation of the next chapter
   const [prefetchedPage, setPrefetchedPage] = useState<NovelPage | null>(null);
@@ -339,6 +342,8 @@ export default function App() {
 
       setPages([newPage]);
       setCurrentPageIndex(0);
+      // Immediately kick off prefetch for chapter 2 (most reliable trigger)
+      setTimeout(() => startPrefetch([newPage], 2, false), 50);
     } catch (err: any) {
       console.error(err);
       setError(err.message || "產生第一章時發生錯誤，請重新嘗試。");
@@ -357,10 +362,15 @@ export default function App() {
       const page = prefetchedPage;
       prefetchRef.current = null;
       setPrefetchedPage(null);
-      setPages(prev => [...prev, page]);
+      const updatedPages = [...pages, page];
+      setPages(updatedPages);
       setCurrentPageIndex(nextPageNumber - 1);
-      if (isEndingMode || (page.title && (page.title.includes("最終章") || page.title.includes("大結局") || page.title.includes("結局")))) {
+      const reachedEnding = isEndingMode || (page.title && (page.title.includes("最終章") || page.title.includes("大結局") || page.title.includes("結局")));
+      if (reachedEnding) {
         setIsEnded(true);
+      } else {
+        // Kick off prefetch for the chapter after this one
+        setTimeout(() => startPrefetch(updatedPages, updatedPages.length + 1, isEndingMode), 50);
       }
       return;
     }
@@ -450,11 +460,16 @@ export default function App() {
         arcNumber: resolvedArc.arcNumber
       };
 
-      setPages(prev => [...prev, newPage]);
+      const updatedPages = [...pages, newPage];
+      setPages(updatedPages);
       setCurrentPageIndex(nextPageNumber - 1);
       
-      if (isEndingMode || (data.chapterTitle && (data.chapterTitle.includes("最終章") || data.chapterTitle.includes("大結局") || data.chapterTitle.includes("結局")))) {
+      const reachedEnding = isEndingMode || (data.chapterTitle && (data.chapterTitle.includes("最終章") || data.chapterTitle.includes("大結局") || data.chapterTitle.includes("結局")));
+      if (reachedEnding) {
         setIsEnded(true);
+      } else {
+        // Immediately kick off prefetch for the next chapter
+        setTimeout(() => startPrefetch(updatedPages, updatedPages.length + 1, isEndingMode), 50);
       }
     } catch (err: any) {
       console.error(err);
@@ -546,6 +561,7 @@ export default function App() {
       if (prefetchRef.current?.forPage === nextPageNum) {
         setPrefetchedPage(page);
         setIsPrefetching(false);
+        prefetchRef.current = null; // clear so effect can re-trigger for the next page
       }
       return page;
     }).catch(err => {
@@ -561,12 +577,15 @@ export default function App() {
 
   // Trigger prefetch when user is on the latest written page
   useEffect(() => {
-    if (!isPlaying || pages.length === 0 || isLoading || isEnded) return;
+    if (!isPlaying || pages.length === 0 || isLoading || isEnded || isGeneratingEndingArc) return;
     if (currentPageIndex !== pages.length - 1) return; // not on the latest page
-    if (prefetchRef.current?.forPage === pages.length + 1) return; // already prefetching/done
+    if (isPrefetching) return; // already running
+    if (prefetchRef.current?.forPage === pages.length + 1) return; // in-flight for this page
+    if (prefetchedPage?.pageNumber === pages.length + 1) return; // already done
 
     startPrefetch(pages, pages.length + 1, isEndingMode);
-  }, [currentPageIndex, pages.length, isPlaying, isLoading, isEnded, isEndingMode]);
+  }, [currentPageIndex, pages.length, isPlaying, isLoading, isEnded, isEndingMode,
+      isPrefetching, prefetchedPage, isGeneratingEndingArc]);
 
   // Invalidate prefetch when ending mode toggles (prompt content changes)
   useEffect(() => {
@@ -744,10 +763,10 @@ export default function App() {
         </div>
 
         <div className="flex items-center space-x-3">
-          {/* Always Visible System Settings button */}
+          {/* Settings button — desktop only (mobile uses the right drawer) */}
           <button 
             onClick={() => setShowSettings(true)}
-            className="flex items-center space-x-1 px-3 py-1.5 rounded border border-editorial-border bg-white hover:bg-paper-deep text-xs font-semibold text-ink transition cursor-pointer"
+            className="hidden lg:flex items-center space-x-1 px-3 py-1.5 rounded border border-editorial-border bg-white hover:bg-paper-deep text-xs font-semibold text-ink transition cursor-pointer"
             title="系統設定 & 自訂金鑰"
             id="btn-settings-toggle"
           >
@@ -757,10 +776,10 @@ export default function App() {
 
           {isPlaying && (
             <>
-              {/* Chapter list button */}
+              {/* Chapter list button — desktop only */}
               <button
                 onClick={() => setShowChapterList(true)}
-                className="flex items-center space-x-1 px-3 py-1.5 rounded border border-editorial-border bg-white hover:bg-paper-deep text-xs font-semibold text-ink transition cursor-pointer"
+                className="hidden lg:flex items-center space-x-1 px-3 py-1.5 rounded border border-editorial-border bg-white hover:bg-paper-deep text-xs font-semibold text-ink transition cursor-pointer"
                 title="查看所有章節目錄"
               >
                 <Layers className="w-3.5 h-3.5 text-editorial-accent" />
@@ -1177,54 +1196,10 @@ export default function App() {
             </div>
           )}
           
-          {/* MOBILE TABS (only visible under lg screen) */}
-          <div className="lg:hidden flex border border-editorial-border mb-2 p-0.5 bg-paper-dark rounded" id="mobile-tabs">
-            <button
-              onClick={() => setMobileTab('character')}
-              className={`flex-1 py-2.5 rounded text-xs font-bold flex items-center justify-center space-x-1.5 transition ${
-                mobileTab === 'character' ? 'bg-white text-editorial-accent border border-editorial-border shadow-xs' : 'text-ink-light'
-              }`}
-            >
-              <User className="w-4 h-4" />
-              <span>主角資料</span>
-              {currentCharacter && (
-                <span className="text-[10px] ml-1 bg-paper-deep px-1.5 py-0.25 rounded text-ink-light font-mono">
-                  {currentCharacter.avatar}
-                </span>
-              )}
-            </button>
-            <button
-              onClick={() => setMobileTab('story')}
-              className={`flex-1 py-2.5 rounded text-xs font-bold flex items-center justify-center space-x-1.5 transition ${
-                mobileTab === 'story' ? 'bg-white text-editorial-accent border border-editorial-border shadow-xs' : 'text-ink-light'
-              }`}
-            >
-              <BookOpen className="w-4 h-4" />
-              <span>小說故事</span>
-              <span className="text-[10px] ml-1 bg-paper-deep px-1.5 py-0.25 rounded text-ink-light font-mono">
-                {currentPageIndex < pages.length ? `P.${currentPageIndex + 1}` : "Draft"}
-              </span>
-            </button>
-            <button
-              onClick={() => setMobileTab('glossary')}
-              className={`flex-1 py-2.5 rounded text-xs font-bold flex items-center justify-center space-x-1.5 transition ${
-                mobileTab === 'glossary' ? 'bg-white text-editorial-accent border border-editorial-border shadow-xs' : 'text-ink-light'
-              }`}
-            >
-              <Tag className="w-4 h-4" />
-              <span>名詞資訊</span>
-              <span className="text-[10px] ml-1 bg-paper-deep px-1.5 py-0.25 rounded text-ink-light font-mono">
-                {currentGlossary.length}
-              </span>
-            </button>
-          </div>
-
           {/* LEFT SIDEBAR: PROTAGONIST PROFILE (lg:col-span-3) */}
           <section 
             id="character-sidebar"
-            className={`${
-              mobileTab === 'character' ? 'block' : 'hidden lg:block'
-            } lg:col-span-3 bg-paper-dark border border-editorial-border rounded p-5 flex flex-col h-[calc(100vh-130px)] lg:h-[calc(100vh-100px)] overflow-y-auto shadow-xs`}
+            className="hidden lg:flex lg:col-span-3 bg-paper-dark border border-editorial-border rounded p-5 flex-col h-[calc(100vh-130px)] lg:h-[calc(100vh-100px)] overflow-y-auto shadow-xs"
           >
             {currentCharacter ? (
               <div className="space-y-5">
@@ -1364,9 +1339,7 @@ export default function App() {
           {/* CENTER PANEL: NOVEL WRITING CANVAS & PAGES (lg:col-span-6) */}
           <section 
             id="story-canvas"
-            className={`${
-              mobileTab === 'story' ? 'flex' : 'hidden lg:flex'
-            } lg:col-span-6 flex-col min-h-[450px] lg:h-[calc(100vh-100px)] overflow-hidden`}
+            className="flex lg:col-span-6 flex-col min-h-[450px] lg:h-[calc(100vh-100px)] overflow-hidden"
           >
             {/* Novel Title Header */}
             <div className="bg-paper-dark border border-editorial-border rounded p-4 mb-4 shadow-xs flex items-center justify-between">
@@ -1529,6 +1502,39 @@ export default function App() {
 
             {/* PAGINATION NAVIGATION BOTTOM PANEL WITH ENDING MODE TOGGLE */}
             <div className="mt-4 bg-paper-dark border border-editorial-border rounded p-3 shadow-xs flex flex-wrap items-center justify-between gap-3">
+              {/* Mobile-only action row (目錄 / 主角 / 結局 / 資料) */}
+              <div className="lg:hidden w-full flex items-center justify-between gap-2 pb-2.5 border-b border-editorial-border mb-0.5">
+                <button
+                  onClick={() => setShowChapterList(true)}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded bg-white border border-editorial-border text-xs font-semibold text-ink"
+                >
+                  <Layers className="w-3.5 h-3.5" />
+                  <span>目錄</span>
+                </button>
+                <button
+                  onClick={() => setMobileCharSheetOpen(true)}
+                  disabled={!currentCharacter}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded bg-white border border-editorial-border text-xs font-semibold text-ink disabled:opacity-40"
+                >
+                  <User className="w-3.5 h-3.5" />
+                  <span>主角{currentCharacter ? ` ${currentCharacter.avatar}` : ''}</span>
+                </button>
+                <button
+                  onClick={handleGenerateEndingArc}
+                  disabled={pages.length === 0 || isLoading || isGeneratingEndingArc || isEnded}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded bg-rose-50 border border-rose-200 text-xs font-semibold text-rose-700 disabled:opacity-40"
+                >
+                  <Trophy className="w-3.5 h-3.5" />
+                  <span>{isEnded ? '已完結' : '結局'}</span>
+                </button>
+                <button
+                  onClick={() => { setMobileDrawerTab('glossary'); setMobileDrawerOpen(true); }}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded bg-white border border-editorial-border text-xs font-semibold text-ink"
+                >
+                  <Tag className="w-3.5 h-3.5" />
+                  <span>資料</span>
+                </button>
+              </div>
               <button
                 onClick={() => setCurrentPageIndex((prev) => Math.max(0, prev - 1))}
                 disabled={currentPageIndex === 0 || isLoading || isGeneratingEndingArc}
@@ -1558,8 +1564,8 @@ export default function App() {
                 )}
               </span>
 
-              {/* IMMERSIVE ENDING MODE CONTROL */}
-              <div className="flex items-center space-x-2 bg-white border border-editorial-border rounded px-3 py-1.5" id="ending-mode-toggle">
+              {/* IMMERSIVE ENDING MODE CONTROL — desktop only */}
+              <div className="hidden lg:flex items-center space-x-2 bg-white border border-editorial-border rounded px-3 py-1.5" id="ending-mode-toggle">
                 <span className="text-xs text-ink-light font-serif flex items-center gap-1">
                   <Trophy className="w-3.5 h-3.5 text-editorial-accent" />
                   大結局：
@@ -1586,12 +1592,300 @@ export default function App() {
             </div>
           </section>
 
+          {/* ═══════════════════════════════════════════════════════
+              MOBILE: CHARACTER BOTTOM SHEET
+              ═══════════════════════════════════════════════════════ */}
+          {mobileCharSheetOpen && (
+            <div className="fixed inset-0 z-50 lg:hidden flex flex-col justify-end">
+              {/* Backdrop */}
+              <div
+                className="absolute inset-0 bg-neutral-900/60"
+                onClick={() => setMobileCharSheetOpen(false)}
+              />
+              {/* Sheet panel */}
+              <div className="relative bg-paper rounded-t-2xl max-h-[82vh] flex flex-col shadow-2xl">
+                {/* Drag handle */}
+                <div className="flex justify-center pt-3 pb-1 shrink-0">
+                  <div className="w-10 h-1 bg-editorial-border rounded-full" />
+                </div>
+                {/* Header */}
+                <div className="flex items-center justify-between px-5 pb-3 border-b border-editorial-border shrink-0">
+                  <h3 className="text-sm font-bold text-editorial-accent flex items-center gap-2">
+                    <User className="w-4 h-4" />
+                    主角資料
+                    {currentCharacter && (
+                      <span className="text-base">{currentCharacter.avatar}</span>
+                    )}
+                  </h3>
+                  <button
+                    onClick={() => setMobileCharSheetOpen(false)}
+                    className="p-1.5 rounded-full bg-paper-dark border border-editorial-border text-ink-light hover:text-ink transition"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                {/* Content */}
+                <div className="overflow-y-auto flex-1 p-5 space-y-4">
+                  {currentCharacter ? (
+                    <>
+                      <div className="text-center">
+                        <div className="text-4xl mb-1">{currentCharacter.avatar}</div>
+                        <div className="font-bold text-base text-ink font-serif">{currentCharacter.name}</div>
+                        <div className="text-xs text-ink-light mt-0.5 italic">{currentCharacter.role}</div>
+                      </div>
+                      {currentCharacter.status && (
+                        <div className="bg-paper-dark rounded p-3 border border-editorial-border">
+                          <p className="text-[11px] font-bold text-editorial-accent uppercase tracking-widest mb-1.5">當前狀態</p>
+                          <p className="text-xs text-ink leading-relaxed">{currentCharacter.status}</p>
+                        </div>
+                      )}
+                      {currentCharacter.attributes && Object.entries(currentCharacter.attributes).length > 0 && (
+                        <div>
+                          <p className="text-[11px] font-bold text-editorial-accent uppercase tracking-widest mb-2">屬性</p>
+                          <div className="grid grid-cols-2 gap-1.5">
+                            {Object.entries(currentCharacter.attributes).map(([k, v]) => (
+                              <div key={k} className="bg-white border border-editorial-border rounded px-2.5 py-1.5">
+                                <div className="text-[10px] text-ink-light font-bold uppercase">{k}</div>
+                                <div className="text-xs font-bold text-ink font-mono">{v}</div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {currentCharacter.inventory && currentCharacter.inventory.length > 0 && (
+                        <div>
+                          <p className="text-[11px] font-bold text-editorial-accent uppercase tracking-widest mb-2">持有道具</p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {currentCharacter.inventory.map((item, i) => (
+                              <span key={i} className="bg-white border border-editorial-border rounded-full px-2.5 py-1 text-[11px] text-ink">
+                                {item}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {currentCharacter.goals && currentCharacter.goals.length > 0 && (
+                        <div>
+                          <p className="text-[11px] font-bold text-editorial-accent uppercase tracking-widest mb-2">目標</p>
+                          <ul className="space-y-1">
+                            {currentCharacter.goals.map((g, i) => (
+                              <li key={i} className="flex items-start gap-1.5 text-xs text-ink">
+                                <span className="text-editorial-accent mt-0.5">▸</span>
+                                {g}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <p className="text-xs text-ink-light text-center py-8">尚無主角資料</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ═══════════════════════════════════════════════════════
+              MOBILE: RIGHT DRAWER（小說資料 / 設定）
+              ═══════════════════════════════════════════════════════ */}
+          {mobileDrawerOpen && (
+            <div className="fixed inset-0 z-50 lg:hidden flex">
+              {/* Backdrop */}
+              <div
+                className="absolute inset-0 bg-neutral-900/60"
+                onClick={() => setMobileDrawerOpen(false)}
+              />
+              {/* Drawer panel */}
+              <div className="relative ml-auto w-[88vw] max-w-sm bg-paper flex flex-col shadow-2xl h-full">
+                {/* Header */}
+                <div className="flex items-center justify-between px-4 py-3 bg-paper-dark border-b border-editorial-border shrink-0">
+                  <h3 className="text-xs font-bold uppercase tracking-widest text-editorial-accent">
+                    小說資訊
+                  </h3>
+                  <button
+                    onClick={() => setMobileDrawerOpen(false)}
+                    className="p-1.5 rounded-full border border-editorial-border bg-white text-ink-light hover:text-ink transition"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                {/* Tab row */}
+                <div className="flex border-b border-editorial-border bg-paper-dark shrink-0">
+                  <button
+                    onClick={() => setMobileDrawerTab('glossary')}
+                    className={`flex-1 py-2.5 text-xs font-bold transition border-b-2 ${
+                      mobileDrawerTab === 'glossary'
+                        ? 'border-editorial-accent text-editorial-accent bg-paper'
+                        : 'border-transparent text-ink-light'
+                    }`}
+                  >
+                    小說資料
+                  </button>
+                  <button
+                    onClick={() => setMobileDrawerTab('settings')}
+                    className={`flex-1 py-2.5 text-xs font-bold transition border-b-2 ${
+                      mobileDrawerTab === 'settings'
+                        ? 'border-editorial-accent text-editorial-accent bg-paper'
+                        : 'border-transparent text-ink-light'
+                    }`}
+                  >
+                    設定
+                  </button>
+                </div>
+
+                {/* ── 小說資料 tab ── */}
+                {mobileDrawerTab === 'glossary' && (
+                  <div className="flex flex-col flex-1 min-h-0 p-4">
+                    {/* Search */}
+                    <div className="relative mb-3 shrink-0">
+                      <Search className="w-4 h-4 text-editorial-accent absolute left-3 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="text"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        placeholder="搜尋人物、地點、組織..."
+                        className="w-full bg-white border border-editorial-border rounded pl-9 pr-3 py-2 text-xs text-ink placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-editorial-accent/30 transition"
+                      />
+                    </div>
+                    {/* Category pills */}
+                    <div className="flex overflow-x-auto space-x-1 mb-3 pb-1 shrink-0 scrollbar-none">
+                      {["全部", "人物", "組織", "地點", "道具", "其他"].map((cat) => (
+                        <button
+                          key={cat}
+                          onClick={() => setSelectedCategory(cat as GlossaryCategory | "全部")}
+                          className={`shrink-0 px-3 py-1 rounded-full text-[11px] font-bold border transition ${
+                            selectedCategory === cat
+                              ? 'bg-editorial-accent text-white border-editorial-accent'
+                              : 'bg-white text-ink-light border-editorial-border hover:border-editorial-accent/50'
+                          }`}
+                        >
+                          {cat}
+                        </button>
+                      ))}
+                    </div>
+                    {/* Glossary list */}
+                    <div className="flex-1 overflow-y-auto space-y-2">
+                      {filteredGlossary.length === 0 ? (
+                        <p className="text-xs text-ink-light text-center py-6 italic">尚無相關名詞資料</p>
+                      ) : (
+                        filteredGlossary.map((item, idx) => (
+                          <button
+                            key={idx}
+                            onClick={() => setSelectedGlossaryItem(item)}
+                            className="w-full text-left bg-white border border-editorial-border rounded p-3 hover:border-editorial-accent/60 transition"
+                          >
+                            <div className="flex items-center justify-between mb-0.5">
+                              <span className="text-xs font-bold text-ink">{item.name}</span>
+                              <span className="text-[10px] bg-paper-deep border border-editorial-border rounded px-1.5 py-0.25 text-ink-light font-mono">
+                                {item.category}
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-ink-light leading-relaxed line-clamp-2">{item.description}</p>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* ── 設定 tab ── */}
+                {mobileDrawerTab === 'settings' && (
+                  <div className="flex-1 overflow-y-auto p-4 space-y-5">
+                    {/* API Key */}
+                    <div>
+                      <label className="block text-[11px] font-bold uppercase tracking-widest text-editorial-accent mb-1.5">
+                        Gemini API Key
+                      </label>
+                      <input
+                        type="password"
+                        value={customApiKey}
+                        onChange={(e) => {
+                          setCustomApiKey(e.target.value);
+                          localStorage.setItem("user_gemini_api_key", e.target.value);
+                        }}
+                        placeholder="貼上您的 API Key..."
+                        className="w-full bg-white border border-editorial-border rounded px-3 py-2 text-xs text-ink placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-editorial-accent/30 transition font-mono"
+                      />
+                      <p className="text-[10px] text-ink-light mt-1.5 leading-relaxed">
+                        從 <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="text-editorial-accent underline">Google AI Studio</a> 取得免費 API Key，直接在瀏覽器端呼叫 Gemini。
+                      </p>
+                    </div>
+                    {/* Story info */}
+                    {isPlaying && (
+                      <div>
+                        <p className="text-[11px] font-bold uppercase tracking-widest text-editorial-accent mb-2">小說資訊</p>
+                        <div className="bg-paper-dark border border-editorial-border rounded p-3 space-y-1.5 text-xs text-ink">
+                          <div className="flex justify-between">
+                            <span className="text-ink-light">標題</span>
+                            <span className="font-bold font-serif truncate max-w-[60%] text-right">{novelTitle}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-ink-light">章節數</span>
+                            <span className="font-bold font-mono">{pages.length}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-ink-light">名詞數</span>
+                            <span className="font-bold font-mono">{currentGlossary.length}</span>
+                          </div>
+                          {currentArc && (
+                            <div className="flex justify-between">
+                              <span className="text-ink-light">當前弧段</span>
+                              <span className="font-bold font-mono">第 {currentArc.arcNumber} 區塊</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                    {/* Export */}
+                    {isPlaying && pages.length > 0 && (
+                      <div>
+                        <p className="text-[11px] font-bold uppercase tracking-widest text-editorial-accent mb-2">匯出</p>
+                        <button
+                          onClick={() => {
+                            const novelText = pages.map((p, i) =>
+                              `# 第 ${i + 1} 章：${p.title}\n\n${(p.content || '').replace(/\\n/g, '\n')}\n`
+                            ).join('\n---\n\n');
+                            const blob = new Blob([`# ${novelTitle}\n\n${novelText}`], { type: 'text/markdown' });
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url; a.download = `${novelTitle}.md`; a.click();
+                            URL.revokeObjectURL(url);
+                          }}
+                          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-editorial-border rounded text-xs font-semibold text-ink hover:bg-paper-dark transition"
+                        >
+                          <Download className="w-4 h-4" />
+                          下載 Markdown 檔案
+                        </button>
+                      </div>
+                    )}
+                    {/* Reset */}
+                    {isPlaying && (
+                      <div className="pt-2 border-t border-editorial-border">
+                        <button
+                          onClick={() => {
+                            if (confirm('確定要重置整個故事嗎？此操作無法復原。')) {
+                              setMobileDrawerOpen(false);
+                              handleReset();
+                            }
+                          }}
+                          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-red-50 border border-red-200 rounded text-xs font-semibold text-red-700 hover:bg-red-100 transition"
+                        >
+                          <RefreshCw className="w-4 h-4" />
+                          重置故事
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* RIGHT SIDEBAR: WORLD GLOSSARY & NOUNS (lg:col-span-3) */}
           <section 
             id="glossary-sidebar"
-            className={`${
-              mobileTab === 'glossary' ? 'flex' : 'hidden lg:flex'
-            } lg:col-span-3 bg-paper-dark border border-editorial-border rounded p-5 flex-col h-[calc(100vh-130px)] lg:h-[calc(100vh-100px)] overflow-hidden shadow-xs`}
+            className="hidden lg:flex lg:col-span-3 bg-paper-dark border border-editorial-border rounded p-5 flex-col h-[calc(100vh-130px)] lg:h-[calc(100vh-100px)] overflow-hidden shadow-xs"
           >
             {/* Header Title */}
             <div className="sidebar-title flex items-center justify-between pb-2 border-b border-editorial-border mb-4">

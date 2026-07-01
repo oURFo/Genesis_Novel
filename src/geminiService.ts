@@ -107,7 +107,7 @@ ${endingArcStep <= climaxStart
 
   promptText += `【續寫任務】：
 請為主角撰寫第 ${nextPageNumber} 頁的故事。
-1. 小說故事內容 (content) 長度絕對不能少於 500 字，必須在 500 至 800 字之間。斷行與段落必須清晰明確，段落與段落之間使用雙換行（空行）分開，避免玩家閱讀困難。文筆要精緻，著重心理描寫、對話和情境氣氛，請用繁體中文撰寫。
+1. 小說故事內容 (content) 長度絕對不能少於 1000 字，必須在 1000 至 1500 字之間。斷行與段落必須清晰明確，段落與段落之間使用雙換行（空行）分開，避免玩家閱讀困難。文筆要精緻豐富，著重心理描寫、生動對話、場景渲染和情境氣氛，每個段落都要有充實的細節描寫，請用繁體中文撰寫。
 2. 小說標題 (novelTitle)：如果是第一章，請原創一個契合故事大綱的宏大小說名稱；若非第一章，請回傳原小說標題即可。
 3. 章節標題 (chapterTitle)：本章的子標題，例如：「第一章：命運的交錯」或「第二章：幽谷深處」。如果是在大結局模式下，標題必須體現這是最終章/結局。
 4. 主角狀態更新 (characterUpdate)：
@@ -138,7 +138,7 @@ export function getResponseSchema() {
       },
       content: {
         type: "STRING",
-        description: "本章節的小說文本內容，不可少於 500 字，繁體中文，生動感人，段落分明，接續上一頁發展。"
+        description: "本章節的小說文本內容，必須在 1000 至 1500 字之間，繁體中文，文筆精緻豐富，生動感人，段落分明，每段有充實細節，接續上一頁發展。"
       },
       characterUpdate: {
         type: "OBJECT",
@@ -216,7 +216,7 @@ async function generateChapterClientSide(payload: GeneratePayload, apiKey: strin
     generationConfig: {
       responseMimeType: "application/json",
       responseSchema: responseSchema,
-      temperature: 0.85
+      temperature: 1.0
     }
   };
 
