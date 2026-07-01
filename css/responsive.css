@@ -1,0 +1,167 @@
+/* ============================================
+   花圃數學園 - Responsive / Tablet Styles
+   ============================================ */
+
+/* ---- Tablet landscape (768px - 1199px) ---- */
+@media screen and (max-width: 1199px) {
+  :root { --header-h: 50px; }
+
+  .app-title { font-size: 1.1rem; }
+  .garden-panel { width: 36%; }
+
+  .flower-grid { gap: 8px; }
+  .flower-card { min-height: 80px; padding: 6px 4px 5px; }
+  .flower-svg-wrap { width: 48px; height: 48px; }
+  .flower-name { font-size: .65rem; }
+
+  .question-text { font-size: 1.2rem; }
+  .mc-btn { font-size: 1.05rem; padding: 10px; }
+  .np-btn { height: 40px; font-size: 1.2rem; }
+}
+
+/* ---- Tablet / iPad landscape (768px - 1024px) ---- */
+@media screen and (max-width: 1024px) {
+  :root { --header-h: 48px; }
+
+  .garden-panel {
+    width: 34%;
+    min-width: 220px;
+    padding: 12px 10px 10px;
+  }
+
+  .app-title { font-size: 1rem; }
+  .player-name-display { max-width: 80px; }
+
+  .flower-grid { gap: 7px; }
+  .flower-card { min-height: 75px; border-radius: 10px; }
+  .flower-svg-wrap { width: 44px; height: 44px; }
+
+  .question-content { padding: 10px 14px 8px; }
+  .question-text { font-size: 1.1rem; }
+  .mc-options { gap: 8px; }
+  .mc-btn { font-size: 1rem; padding: 9px; }
+
+  .scratchpad-toolbar { padding: 5px 10px; gap: 5px; }
+  #stroke-size { width: 55px; }
+
+  .answer-area { padding: 8px 12px 10px; }
+  .numpad { gap: 5px; }
+  .np-btn { height: 38px; font-size: 1.15rem; }
+
+  .submit-btn { padding: 11px; font-size: 1rem; }
+
+  .answer-value-display { font-size: 1.4rem; }
+}
+
+/* ---- Small tablet / wide phone landscape (< 768px) ---- */
+@media screen and (max-width: 768px) {
+  :root { --header-h: 44px; }
+
+  .app-main { flex-direction: column; }
+
+  .garden-panel {
+    width: 100%;
+    max-width: none;
+    height: 200px;
+    min-height: 0;
+    flex-direction: column;
+    padding: 8px 10px;
+  }
+
+  .flower-grid {
+    grid-template-columns: repeat(6, 1fr);
+    flex: 1;
+  }
+
+  .flower-card { min-height: 60px; padding: 4px; }
+  .flower-svg-wrap { width: 36px; height: 36px; }
+  .flower-name { font-size: .6rem; }
+
+  .garden-legend { display: none; }
+
+  .question-panel {
+    flex: 1;
+    overflow: hidden;
+  }
+
+  .question-text { font-size: 1rem; }
+  .np-btn { height: 34px; font-size: 1.05rem; }
+}
+
+/* ---- PC large (> 1440px) ---- */
+@media screen and (min-width: 1440px) {
+  .garden-panel { width: 36%; max-width: 400px; }
+  .flower-svg-wrap { width: 64px; height: 64px; }
+  .question-text { font-size: 1.45rem; }
+  .mc-btn { font-size: 1.2rem; padding: 14px; }
+  .np-btn { height: 50px; font-size: 1.4rem; }
+  .submit-btn { font-size: 1.2rem; padding: 15px; }
+}
+
+/* ---- Touch device: increase hit targets ---- */
+@media (hover: none) and (pointer: coarse) {
+  .mc-btn { padding: 14px; min-height: 52px; }
+  .np-btn { height: 48px; }
+  .tool-btn { width: 42px; height: 38px; }
+  .submit-btn { padding: 15px; }
+  .flower-card { min-height: 88px; }
+}
+
+/* ---- Landscape orientation lock hint ---- */
+@media screen and (max-width: 600px) and (orientation: portrait) {
+  body::before {
+    content: '請將裝置橫向使用 📱↔️';
+    position: fixed;
+    inset: 0;
+    background: var(--green-dark);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3rem;
+    z-index: 9999;
+    text-align: center;
+    padding: 20px;
+    line-height: 1.6;
+  }
+}
+
+/* Ensure canvas fills its container */
+.scratchpad-canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* ============================================================
+   Safe Area — Android / iOS navigation bar / home indicator
+   viewport-fit=cover is set in the meta tag; these rules
+   pad the bottom of interactive zones so the nav bar can't
+   overlap any buttons.
+   ============================================================ */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+
+  /* Entire app sits above the nav bar */
+  body {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  /* Answer / submit area gets the biggest breathing room */
+  .answer-area {
+    padding-bottom: calc(12px + env(safe-area-inset-bottom));
+  }
+
+  /* Question panel scrollable area */
+  .question-panel {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  /* Garden panel */
+  .garden-panel {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  /* Modals — make sure the modal box floats above the bar */
+  .modal-overlay {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}

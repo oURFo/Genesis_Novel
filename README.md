@@ -1,77 +1,129 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
-</div>
+# 花圃數學園 🌸
 
-# 虛擬小說產生器
+國小互動數學習題網頁，採種花養成遊戲玩法，目前已支援 **一年級 🌱** 與 **二年級 🌿** 多年級花圃系統。
 
-以 **Google Gemini AI** 驅動的繁體中文互動小說工作坊。支援 RPG 角色追蹤、世界觀詞彙表、自動章節生成，並可匯出完整 Markdown 小說。
+## 功能特色
 
----
-
-## 本機開發
-
-**Prerequisites:** Node.js 18+
-
-1. 安裝套件：
-   ```bash
-   npm install
-   ```
-2. 複製環境變數範本並填入 Gemini API Key：
-   ```bash
-   cp .env.example .env.local
-   # 編輯 .env.local，設定 GEMINI_API_KEY=your_key_here
-   ```
-3. 啟動開發伺服器：
-   ```bash
-   npm run dev
-   ```
-   瀏覽器開啟 http://localhost:3000
+- **雙年級獨立花圃**：支援一、二年級切換，各 16 朵花，開花統計（0/16）各自獨立。
+- **32 種花朵主題**：對應 32 個核心數學主題（國小翰林版 ＋ 康軒版合併大綱課程）。
+- **5 個生長階段**：種子 → 發芽 → 長葉 → 花苞 → 開花（每答對 10/20/30/50 題升級）。
+- **教科書級注音排版**：
+  - 中文字 100% 完整自動注音標注。
+  - 採用教科書常用「**標楷體**」作為優先注音字型，修復三聲（ˇ）顯示為一橫的筆畫問題，呈現標準打勾狀。
+  - 注音與中文字採用**垂直置中對齊**，版面高度一致，解決高低跳動問題。
+  - **輕聲點「˙」自動置頂**，完美對齊音符正上方，而非右側，符合繁體正規教科書標準。
+- **手寫計算草稿區**：HTML5 Canvas，支援滑鼠與觸控筆/手指書寫。
+- **數字鍵盤答題**：大按鈕設計，平板友善，支援實體鍵盤 0-9、Backspace 及 Enter。
+- **粒子與全螢幕煙火動畫**：答對時光點從題目區飛往對應花朵，開花時觸發滿版慶祝煙火。
+- **localStorage 本機儲存**：自動記錄當前遊玩的年級，重開瀏覽器進度依然保留。
 
 ---
 
-## 部署到 GitHub Pages（靜態托管，免伺服器）
+## 數學主題（一年級 🌱）
 
-### 自動部署（推薦）
+| 花種 | 主題 | 難度 | 學期 |
+|------|------|------|------|
+| 向日葵 🌻 | 數數（10/30以內） | ★ | 一上 |
+| 雛菊 🌼 | 比較（大小、排序） | ★ | 一上 |
+| 蒲公英 🌬️ | 分與合 | ★★ | 一上 |
+| 牽牛花 🌺 | 圖形（平面/立體） | ★ | 一上 |
+| 櫻花 🌸 | 加法（10以內） | ★★ | 一上 |
+| 玫瑰 🌹 | 減法（10以內） | ★★ | 一上 |
+| 薰衣草 💜 | 時間（整點/時段） | ★ | 一上 |
+| 鬱金香 🌷 | 大數數（50/100以內） | ★★ | 一下 |
+| 百合 🤍 | 進階加法（20以內） | ★★★ | 一下 |
+| 繡球花 💙 | 進階減法（20以內） | ★★★ | 一下 |
+| 康乃馨 🌸 | 錢幣換算 | ★★ | 一下 |
+| 牡丹 🪷 | 二位數加減 | ★★★ | 一下 |
+| 水仙 🌼 | 加減混合 | ★★★ | 一下 |
+| 荷花 🪷 | 綜合應用 | ★★★ | 一下 |
+| 茉莉 🤍 | 基礎情境題 | ★★★★ | 一下 |
+| 紫羅蘭 💜 | 進階情境題 | ★★★防 | 一下 |
 
-本專案內建 GitHub Actions 工作流程，推送到 `main` 分支即自動部署。
+---
 
-1. **建立 GitHub Repository** 並推送此專案：
-   ```bash
-   git remote add origin https://github.com/你的帳號/你的倉庫名稱.git
-   git push -u origin main
-   ```
+## 數學主題（二年級 🌿）
 
-2. **啟用 GitHub Pages**：
-   - 進入 Repository → **Settings** → **Pages**
-   - Source 選擇 **Deploy from a branch**
-   - Branch 選擇 `gh-pages`，資料夾選 `/ (root)`
-   - 點擊 **Save**
+| 花種 | 主題 | 難度 | 學期 |
+|------|------|------|------|
+| 木芙蓉 🌺 | 200以內的數 | ★★ | 二上 |
+| 金盞花 🌼 | 二位數加法（進位） | ★★ | 二上 |
+| 桔梗 💜 | 二位數減法（退位） | ★★ | 二上 |
+| 波斯菊 🌸 | 長度（公分） | ★★ | 二上 |
+| 風信子 💙 | 容量 | ★★ | 二上 |
+| 梔子花 🤍 | 時間（時分） | ★★ | 二上 |
+| 小太陽菊 🌻 | 乘法（2、4、5） | ★★★ | 二上 |
+| 夾竹桃 🌸 | 乘法（3、6、7） | ★★★ | 二上 |
+| 蓮花 🪷 | 面積大小比較 | ★★ | 二上 |
+| 山茶花 🌹 | 1000以內的數 | ★★★ | 二下 |
+| 紫藤 💜 | 三位數加減法 | ★★★ | 二下 |
+| 大向日葵 🌻 | 公尺與公分 | ★★★ | 二下 |
+| 龍膽 💙 | 年月日 | ★★ | 二下 |
+| 雞蛋花 🌼 | 除法概念 | ★★★ | 二下 |
+| 百子蓮 💙 | 認識分數 | ★★★ | 二下 |
+| 大理花 🌸 | 平面與立體圖形 | ★★★ | 二下 |
 
-3. **等待 Actions 完成**：
-   - 到 **Actions** 頁籤查看 `Deploy to GitHub Pages` 工作流程
-   - 完成後，網站將發布在 `https://你的帳號.github.io/你的倉庫名稱/`
+---
 
-### 手動建置靜態檔
+## 本地開發
+
+由於需要載入 `data/questions.json` 和 `data/questions_g2.json`，必須透過 HTTP server 執行（不可直接點擊開啟 `index.html`）：
 
 ```bash
-VITE_BASE_PATH=/你的倉庫名稱/ npm run build:static
+# 使用 Node.js（推薦，需安裝 Node.js）
+npx serve .
+
+# 使用 Python（需安裝 Python 3）
+python -m http.server 8080
 ```
-產出在 `dist/` 資料夾，可上傳至任何靜態托管服務（Netlify、Vercel、Cloudflare Pages 等）。
 
-> **注意：** GitHub Pages 為純前端靜態部署，無後端 API Key。使用者需在應用程式的「⚙ 設定」頁面輸入自己的 [Gemini API Key](https://aistudio.google.com/app/apikey)。
-
----
-
-## 技術架構
-
-| 層級 | 技術 |
-|------|------|
-| 前端 | React 19 + TypeScript |
-| 樣式 | Tailwind CSS v4 |
-| 建置 | Vite 6 |
-| 後端（本機/伺服器模式） | Express 4 |
-| AI | Google Gemini (`gemini-3.5-flash`) |
+然後在瀏覽器開啟控制台網址（預設 `http://localhost:3000` 或 `http://localhost:8080`）即可遊玩。
 
 ---
 
-View original app in AI Studio: https://ai.studio/apps/9c42f925-4ee3-41e8-b4f3-ae90e95ff4d6
+## GitHub Pages 部署
+
+在專案資料夾內，依序執行以下指令：
+
+```powershell
+# 初始化 git
+git init
+git add .
+git commit -m "部署花圃數學園一二年級版"
+
+# 連結到 GitHub repository
+git remote add origin https://github.com/你的帳號/你的專案名稱.git
+git branch -M main
+git push -u origin main
+```
+
+**GitHub Pages 設定**：
+1. 進入 GitHub repo → Settings → Pages
+2. Source 選 `Deploy from a branch`
+3. Branch 選 `main` / `/ (root)`
+4. 儲存後約 1 分鐘，即可透過 `https://你的帳號.github.io/你的專案名稱/` 存取
+
+---
+
+## 檔案結構
+
+```
+/
+├── index.html            # 主網頁頁面
+├── css/
+│   ├── main.css          # 主樣式與注音排版系統
+│   ├── flowers.css       # 花朵生長動畫
+│   ├── particles.css     # 答對光點粒子效果
+│   └── responsive.css    # RWD 平板與 PC 適配
+├── js/
+│   ├── storage.js        # localStorage 進度與年級管理 (向下相容)
+│   ├── flowers.js        # 一、二年級共 32 朵花 SVG 定義與生長階段
+│   ├── particles.js      # 光點飛入粒子動畫
+│   ├── questions.js      # 題目切換、答題與手寫畫布模組
+│   ├── zhuyin.js         # 注音自動標注對照字典與解析器 (594字)
+│   └── app.js            # 主控制器與事件綁定
+├── data/
+│   ├── questions.json    # 一年級題庫 (800題)
+│   └── questions_g2.json # 二年級題庫 (800題)
+└── README.md
+```

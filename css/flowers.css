@@ -1,0 +1,144 @@
+/* ============================================
+   花圃數學園 - Flower SVG Styles
+   ============================================ */
+
+/* Base SVG wrapper in each flower card */
+.flower-svg-wrap svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+/* Stage ring indicator on flower card */
+.flower-card[data-stage="0"] .flower-mini-fill { background: #795548; width: 0%; }
+.flower-card[data-stage="1"] .flower-mini-fill { background: #81c784; }
+.flower-card[data-stage="2"] .flower-mini-fill { background: #4caf50; }
+.flower-card[data-stage="3"] .flower-mini-fill { background: #ffd54f; }
+.flower-card[data-stage="4"] .flower-mini-fill { background: #f48fb1; }
+
+/* Active glow per stage color */
+.flower-card[data-stage="4"].active {
+  box-shadow: 0 0 0 3px rgba(244,143,177,.5), 0 6px 16px rgba(0,0,0,.25);
+}
+
+/* Bloom sparkle for fully bloomed flowers */
+.flower-card[data-stage="4"]::before {
+  content: '✨';
+  position: absolute;
+  top: -6px;
+  right: -4px;
+  font-size: .75rem;
+  animation: sparkle 2s ease-in-out infinite;
+}
+
+@keyframes sparkle {
+  0%, 100% { opacity: 1; transform: scale(1) rotate(0deg); }
+  50%       { opacity: .5; transform: scale(1.3) rotate(20deg); }
+}
+
+/* Level-up burst animation on flower card */
+.flower-card.levelup-burst {
+  animation: burst-anim .6s ease forwards;
+}
+
+@keyframes burst-anim {
+  0%   { transform: scale(1); }
+  30%  { transform: scale(1.2) rotate(-5deg); }
+  60%  { transform: scale(1.15) rotate(5deg); }
+  100% { transform: scale(1) rotate(0); }
+}
+
+/* ---- Inline SVG flower styles per type ---- */
+
+/* Soil base (shared by all) */
+.fl-soil { fill: #6b4c2a; }
+.fl-soil-light { fill: #a0785a; }
+.fl-stem { stroke: #2d6a4f; stroke-width: 3; fill: none; stroke-linecap: round; }
+.fl-stem-thin { stroke: #40916c; stroke-width: 2; fill: none; }
+.fl-leaf { fill: #52b788; }
+.fl-leaf-dark { fill: #2d6a4f; }
+
+/* Seed (stage 0) */
+.fl-seed { fill: #795548; }
+.fl-seed-inner { fill: #a0785a; }
+
+/* Sprout (stage 1) */
+.fl-sprout { fill: #81c784; }
+
+/* ---- Per-flower petal colors ---- */
+/* sunflower (向日葵) */
+.fl-sunflower-petal { fill: #ffc107; }
+.fl-sunflower-center { fill: #5d4037; }
+
+/* daisy (雛菊) */
+.fl-daisy-petal { fill: #fff9c4; }
+.fl-daisy-center { fill: #ffee58; }
+
+/* dandelion (蒲公英) */
+.fl-dandelion-puff { fill: #eeeeee; stroke: #bdbdbd; stroke-width: .5; }
+.fl-dandelion-seed { stroke: #bdbdbd; stroke-width: .7; fill: none; }
+
+/* morning-glory (牽牛花) */
+.fl-mg-petal { fill: #9575cd; }
+.fl-mg-center { fill: #ede7f6; }
+
+/* cherry (櫻花) */
+.fl-cherry-petal { fill: #f8bbd9; }
+.fl-cherry-center { fill: #e91e63; }
+
+/* rose (玫瑰) */
+.fl-rose-petal { fill: #ef5350; }
+.fl-rose-petal2 { fill: #c62828; }
+
+/* lavender (薰衣草) */
+.fl-lav-flower { fill: #b39ddb; }
+.fl-lav-stem { stroke: #7e57c2; stroke-width: 2; fill: none; }
+
+/* tulip (鬱金香) */
+.fl-tulip-petal { fill: #ff7043; }
+.fl-tulip-inner { fill: #ffa726; }
+
+/* lily (百合) */
+.fl-lily-petal { fill: #fff9c4; }
+.fl-lily-stamen { fill: #fbc02d; }
+
+/* hydrangea (繡球花) */
+.fl-hydrangea { fill: #80cbc4; }
+.fl-hydrangea2 { fill: #4db6ac; }
+
+/* carnation (康乃馨) */
+.fl-carn-petal { fill: #f48fb1; }
+.fl-carn-petal2 { fill: #f06292; }
+
+/* peony (牡丹) */
+.fl-peony-petal { fill: #ce93d8; }
+.fl-peony-petal2 { fill: #ab47bc; }
+.fl-peony-center { fill: #fce4ec; }
+
+/* ---- Hover shimmer on bloomed flowers ---- */
+.flower-card[data-stage="4"] .flower-svg-wrap {
+  filter: drop-shadow(0 0 6px rgba(244,143,177,.6));
+}
+
+.flower-card[data-stage="4"]:hover .flower-svg-wrap {
+  filter: drop-shadow(0 0 10px rgba(244,143,177,.8));
+  animation: shimmer .8s ease-in-out;
+}
+
+@keyframes shimmer {
+  0%, 100% { filter: drop-shadow(0 0 10px rgba(244,143,177,.8)); }
+  50%       { filter: drop-shadow(0 0 16px rgba(255,209,102,.9)); }
+}
+
+/* Level-up flower display in modal */
+.levelup-flower-display {
+  font-size: 5rem;
+  display: block;
+  animation: bloom-pop .5s cubic-bezier(.175,.885,.32,1.275);
+}
+
+@keyframes bloom-pop {
+  0%   { transform: scale(0) rotate(-20deg); opacity: 0; }
+  80%  { transform: scale(1.1) rotate(5deg); }
+  100% { transform: scale(1) rotate(0); opacity: 1; }
+}

@@ -1,16 +1,203 @@
-<!doctype html>
-<html lang="zh-Hant">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>虛擬小說產生器 — AI 無限生成 RPG 小說工作坊</title>
-    <meta name="description" content="以 Google Gemini AI 驅動的繁體中文互動小說工作坊，支援 RPG 角色追蹤、世界觀詞彙表、自動章節生成，並可匯出完整 Markdown 小說。" />
-    <meta property="og:title" content="虛擬小說產生器" />
-    <meta property="og:description" content="以 Google Gemini AI 驅動的繁體中文互動小說工作坊" />
-    <meta property="og:type" content="website" />
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>花圃數學園 🌸</title>
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/flowers.css">
+  <link rel="stylesheet" href="css/particles.css">
+  <link rel="stylesheet" href="css/responsive.css">
+</head>
+<body>
+
+  <!-- Onboarding Modal -->
+  <div class="modal-overlay hidden" id="onboarding-overlay">
+    <div class="modal-box onboarding-box">
+      <div class="onboarding-deco">🌱</div>
+      <h2><ruby>歡<rt>ㄏㄨㄢ</rt></ruby><ruby>迎<rt>ㄧㄥˊ</rt></ruby><ruby>來<rt>ㄌㄞˊ</rt></ruby><ruby>到<rt>ㄉㄠˋ</rt></ruby><ruby>花<rt>ㄏㄨㄚ</rt></ruby><ruby>圃<rt>ㄆㄨˇ</rt></ruby><ruby>數<rt>ㄕㄨˋ</rt></ruby><ruby>學<rt>ㄒㄩㄝˊ</rt></ruby><ruby>園<rt>ㄩㄢˊ</rt></ruby>！</h2>
+      <p><ruby>回<rt>ㄏㄨㄟˊ</rt></ruby><ruby>答<rt>ㄉㄚˊ</rt></ruby><ruby>數<rt>ㄕㄨˋ</rt></ruby><ruby>學<rt>ㄒㄩㄝˊ</rt></ruby><ruby>題<rt>ㄊㄧˊ</rt></ruby><ruby>目<rt>ㄇㄨˋ</rt></ruby>，<ruby>幫<rt>ㄅㄤ</rt></ruby><ruby>助<rt>ㄓㄨˋ</rt></ruby><ruby>小<rt>ㄒㄧㄠˇ</rt></ruby><ruby>花<rt>ㄏㄨㄚ</rt></ruby><ruby>一<rt>ㄧ</rt></ruby><ruby>起<rt>ㄑㄧˇ</rt></ruby><ruby>成<rt>ㄔㄥˊ</rt></ruby><ruby>長<rt>ㄓㄤˇ</rt></ruby><ruby>吧<rt>˙ㄅㄚ</rt></ruby>！</p>
+      <label for="player-name-input"><ruby>請<rt>ㄑㄧㄥˇ</rt></ruby><ruby>輸<rt>ㄕㄨ</rt></ruby><ruby>入<rt>ㄖㄨˋ</rt></ruby><ruby>你<rt>ㄋㄧˇ</rt></ruby><ruby>的<rt>˙ㄉㄜ</rt></ruby><ruby>名<rt>ㄇㄧㄥˊ</rt></ruby><ruby>字<rt>ㄗˋ</rt></ruby>：</label>
+      <input type="text" id="player-name-input" placeholder="你的名字" maxlength="10" autocomplete="off">
+      <button id="start-btn" class="btn-primary"><ruby>開<rt>ㄎㄞ</rt></ruby><ruby>始<rt>ㄕˇ</rt></ruby><ruby>種<rt>ㄓㄨㄥˋ</rt></ruby><ruby>花<rt>ㄏㄨㄚ</rt></ruby> 🌱</button>
+    </div>
+  </div>
+
+  <!-- Reset Confirm Modal -->
+  <div class="modal-overlay hidden" id="reset-overlay">
+    <div class="modal-box">
+      <div class="modal-icon">⚠️</div>
+      <h3><ruby>確<rt>ㄑㄩㄝˋ</rt></ruby><ruby>認<rt>ㄖㄣˋ</rt></ruby><ruby>重<rt>ㄔㄨㄥˊ</rt></ruby><ruby>置<rt>ㄓˋ</rt></ruby><ruby>進<rt>ㄐㄧㄣˋ</rt></ruby><ruby>度<rt>ㄉㄨˋ</rt></ruby></h3>
+      <p><ruby>重<rt>ㄔㄨㄥˊ</rt></ruby><ruby>置<rt>ㄓˋ</rt></ruby><ruby>後<rt>ㄏㄡˋ</rt></ruby>，<ruby>所<rt>ㄙㄨㄛˇ</rt></ruby><ruby>有<rt>ㄧㄡˇ</rt></ruby><ruby>花<rt>ㄏㄨㄚ</rt></ruby><ruby>朵<rt>ㄉㄨㄛˇ</rt></ruby><ruby>的<rt>˙ㄉㄜ</rt></ruby><ruby>成<rt>ㄔㄥˊ</rt></ruby><ruby>長<rt>ㄓㄤˇ</rt></ruby><ruby>記<rt>ㄐㄧˋ</rt></ruby><ruby>錄<rt>ㄌㄨˋ</rt></ruby><ruby>都<rt>ㄉㄡ</rt></ruby><ruby>會<rt>ㄏㄨㄟˋ</rt></ruby><ruby>消<rt>ㄒㄧㄠ</rt></ruby><ruby>失<rt>ㄕ</rt></ruby>。<br><ruby>確<rt>ㄑㄩㄝˋ</rt></ruby><ruby>定<rt>ㄉㄧㄥˋ</rt></ruby><ruby>要<rt>ㄧㄠˋ</rt></ruby><ruby>重<rt>ㄔㄨㄥˊ</rt></ruby><ruby>新<rt>ㄒㄧㄣ</rt></ruby><ruby>開<rt>ㄎㄞ</rt></ruby><ruby>始<rt>ㄕˇ</rt></ruby><ruby>嗎<rt>˙ㄇㄚ</rt></ruby>？</p>
+      <div class="modal-buttons">
+        <button id="cancel-reset-btn" class="btn-secondary"><ruby>取<rt>ㄑㄩˇ</rt></ruby><ruby>消<rt>ㄒㄧㄠ</rt></ruby></button>
+        <button id="confirm-reset-btn" class="btn-danger"><ruby>確<rt>ㄑㄩㄝˋ</rt></ruby><ruby>定<rt>ㄉㄧㄥˋ</rt></ruby><ruby>重<rt>ㄔㄨㄥˊ</rt></ruby><ruby>置<rt>ㄓˋ</rt></ruby></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Level Up Modal -->
+  <div class="modal-overlay hidden" id="levelup-overlay">
+    <div class="modal-box levelup-box">
+      <div class="levelup-flower-display" id="levelup-flower-display"></div>
+      <h2 id="levelup-title"></h2>
+      <p id="levelup-message"></p>
+      <button id="levelup-close-btn" class="btn-primary"><ruby>繼<rt>ㄐㄧˋ</rt></ruby><ruby>續<rt>ㄒㄩˋ</rt></ruby><ruby>加<rt>ㄐㄧㄚ</rt></ruby><ruby>油<rt>ㄧㄡˊ</rt></ruby>！ 💪</button>
+    </div>
+  </div>
+
+  <!-- App Header -->
+  <header class="app-header">
+    <div class="header-left">
+      <span class="app-logo">🌸</span>
+      <h1 class="app-title"><ruby>花<rt>ㄏㄨㄚ</rt></ruby><ruby>圃<rt>ㄆㄨˇ</rt></ruby><ruby>數<rt>ㄕㄨˋ</rt></ruby><ruby>學<rt>ㄒㄩㄝˊ</rt></ruby><ruby>園<rt>ㄩㄢˊ</rt></ruby></h1>
+      <!-- Grade Tab Switcher -->
+      <div class="grade-tabs" id="grade-tabs">
+        <button class="grade-tab active" id="grade-tab-1" data-grade="1">🌱 <ruby>一<rt>ㄧ</rt></ruby><ruby>年<rt>ㄋㄧㄢˊ</rt></ruby><ruby>級<rt>ㄐㄧˊ</rt></ruby></button>
+        <button class="grade-tab" id="grade-tab-2" data-grade="2">🌿 <ruby>二<rt>ㄦˋ</rt></ruby><ruby>年<rt>ㄋㄧㄢˊ</rt></ruby><ruby>級<rt>ㄐㄧˊ</rt></ruby></button>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="player-info">
+        <span class="player-avatar">🧒</span>
+        <span class="player-name-display" id="player-name-display"></span>
+      </div>
+      <button class="fullscreen-btn" id="fullscreen-btn" title="全螢幕">⛶</button>
+      <button class="reset-btn" id="reset-btn" title="重置進度">🔄</button>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="app-main">
+
+    <!-- Left: Flower Garden Panel -->
+    <section class="garden-panel">
+      <div class="garden-header">
+        <span class="garden-title" id="garden-title"><ruby>我<rt>ㄨㄛˇ</rt></ruby><ruby>的<rt>˙ㄉㄜ</rt></ruby><ruby>一<rt>ㄧ</rt></ruby><ruby>年<rt>ㄋㄧㄢˊ</rt></ruby><ruby>級<rt>ㄐㄧˊ</rt></ruby><ruby>花<rt>ㄏㄨㄚ</rt></ruby><ruby>圃<rt>ㄆㄨˇ</rt></ruby></span>
+        <span class="garden-stats"><span id="bloom-count">0</span>/<span id="bloom-total">16</span> <ruby>開<rt>ㄎㄞ</rt></ruby><ruby>花<rt>ㄏㄨㄚ</rt></ruby></span>
+      </div>
+
+      <div class="flower-grid" id="flower-grid">
+        <!-- Generated by flowers.js -->
+      </div>
+
+      <div class="garden-footer">
+        <a href="mailto:yuyang119129@gmail.com">yuyang119129@gmail.com</a>
+      </div>
+
+      <div class="garden-legend">
+        <div class="legend-item"><span class="legend-stage s0"></span><ruby>種<rt>ㄓㄨㄥˇ</rt></ruby><ruby>子<rt>˙ㄗ</rt></ruby></div>
+        <div class="legend-item"><span class="legend-stage s1"></span><ruby>發<rt>ㄈㄚ</rt></ruby><ruby>芽<rt>ㄧㄚˊ</rt></ruby></div>
+        <div class="legend-item"><span class="legend-stage s2"></span><ruby>長<rt>ㄓㄤˇ</rt></ruby><ruby>葉<rt>ㄧㄝˋ</rt></ruby></div>
+        <div class="legend-item"><span class="legend-stage s3"></span><ruby>花<rt>ㄏㄨㄚ</rt></ruby><ruby>苞<rt>ㄅㄠ</rt></ruby></div>
+        <div class="legend-item"><span class="legend-stage s4"></span><ruby>開<rt>ㄎㄞ</rt></ruby><ruby>花<rt>ㄏㄨㄚ</rt></ruby></div>
+      </div>
+    </section>
+
+    <!-- Right: Question Panel -->
+    <section class="question-panel">
+
+      <!-- No-topic placeholder -->
+      <div class="no-topic-placeholder" id="no-topic-placeholder">
+        <div class="placeholder-content">
+          <div class="placeholder-icon">👈</div>
+          <p><ruby>點<rt>ㄉㄧㄢˇ</rt></ruby><ruby>擊<rt>ㄐㄧ</rt></ruby><ruby>左<rt>ㄗㄨㄛˇ</rt></ruby><ruby>側<rt>ㄘㄜˋ</rt></ruby><ruby>的<rt>˙ㄉㄜ</rt></ruby><ruby>花<rt>ㄏㄨㄚ</rt></ruby><ruby>朵<rt>ㄉㄨㄛˇ</rt></ruby><br><ruby>選<rt>ㄒㄩㄢˇ</rt></ruby><ruby>擇<rt>ㄗㄜˊ</rt></ruby><ruby>要<rt>ㄧㄠˋ</rt></ruby><ruby>練<rt>ㄌㄧㄢˋ</rt></ruby><ruby>習<rt>ㄒㄧˊ</rt></ruby><ruby>的<rt>˙ㄉㄜ</rt></ruby><ruby>數<rt>ㄕㄨˋ</rt></ruby><ruby>學<rt>ㄒㄩㄝˊ</rt></ruby><ruby>主<rt>ㄓㄨˇ</rt></ruby><ruby>題<rt>ㄊㄧˊ</rt></ruby>！</p>
+        </div>
+      </div>
+
+      <!-- Active question area -->
+      <div class="question-area hidden" id="question-area">
+
+        <!-- Question Header: topic info -->
+        <div class="question-topic-bar">
+          <span class="q-flower-icon" id="q-flower-icon"></span>
+          <span class="q-topic-name" id="q-topic-name"></span>
+          <div class="q-progress-wrap">
+            <div class="q-progress-bar">
+              <div class="q-progress-fill" id="q-progress-fill"></div>
+            </div>
+            <span class="q-progress-text" id="q-progress-text">0 / 50</span>
+          </div>
+        </div>
+
+        <!-- Question Content -->
+        <div class="question-content" id="question-content">
+          <div class="question-number" id="question-number"></div>
+          <div class="question-context hidden" id="question-context"></div>
+          <div class="question-text" id="question-text"></div>
+          <div class="question-visual" id="question-visual"></div>
+
+          <!-- Multiple choice options -->
+          <div class="mc-options hidden" id="mc-options">
+            <button class="mc-btn" data-idx="0"></button>
+            <button class="mc-btn" data-idx="1"></button>
+            <button class="mc-btn" data-idx="2"></button>
+            <button class="mc-btn" data-idx="3"></button>
+          </div>
+        </div>
+
+        <!-- Scratchpad Canvas Area -->
+        <div class="scratchpad-area" id="scratchpad-area">
+          <div class="scratchpad-toolbar">
+            <button class="tool-btn active" id="tool-pen" title="畫筆">✏️</button>
+            <button class="tool-btn" id="tool-eraser" title="橡皮擦">🧹</button>
+            <button class="tool-btn tool-clear" id="tool-clear" title="清除">🗑️</button>
+            <span class="tool-label"><ruby>計<rt>ㄐㄧˋ</rt></ruby><ruby>算<rt>ㄙㄨㄢˋ</rt></ruby><ruby>草<rt>ㄘㄠˇ</rt></ruby><ruby>稿<rt>ㄍㄠˇ</rt></ruby><ruby>區<rt>ㄑㄩ</rt></ruby></span>
+            <input type="range" id="stroke-size" min="2" max="18" value="4" title="筆刷大小">
+          </div>
+          <canvas id="scratchpad-canvas" class="scratchpad-canvas"></canvas>
+        </div>
+
+        <!-- Answer Area (fill-in only, hidden for MC) -->
+        <div class="answer-area" id="answer-area">
+          <div class="answer-display-row">
+            <span class="answer-label"><ruby>我<rt>ㄨㄛˇ</rt></ruby><ruby>的<rt>˙ㄉㄜ</rt></ruby><ruby>答<rt>ㄉㄚˊ</rt></ruby><ruby>案<rt>ㄢˋ</rt></ruby>：</span>
+            <span class="answer-value-display" id="answer-value-display">__</span>
+          </div>
+
+          <div class="numpad" id="numpad">
+            <button class="np-btn" data-num="7">7</button>
+            <button class="np-btn" data-num="8">8</button>
+            <button class="np-btn" data-num="9">9</button>
+            <button class="np-btn" data-num="4">4</button>
+            <button class="np-btn" data-num="5">5</button>
+            <button class="np-btn" data-num="6">6</button>
+            <button class="np-btn" data-num="1">1</button>
+            <button class="np-btn" data-num="2">2</button>
+            <button class="np-btn" data-num="3">3</button>
+            <button class="np-btn np-zero" data-num="0">0</button>
+            <button class="np-btn np-del" id="np-del">⌫</button>
+          </div>
+
+          <button class="submit-btn" id="submit-btn"><ruby>確<rt>ㄑㄩㄝˋ</rt></ruby><ruby>認<rt>ㄖㄣˋ</rt></ruby><ruby>答<rt>ㄉㄚˊ</rt></ruby><ruby>案<rt>ㄢˋ</rt></ruby> ✓</button>
+        </div>
+
+        <!-- Feedback -->
+        <div class="answer-feedback hidden" id="answer-feedback">
+          <div class="feedback-correct hidden" id="feedback-correct">
+            <span class="fb-emoji">🎉</span>
+            <span class="fb-text"><ruby>答<rt>ㄉㄚˊ</rt></ruby><ruby>對<rt>ㄉㄨㄟˋ</rt></ruby><ruby>了<rt>˙ㄌㄜ</rt></ruby>！<ruby>太<rt>ㄊㄞˋ</rt></ruby><ruby>棒<rt>ㄅㄤˋ</rt></ruby><ruby>了<rt>˙ㄌㄜ</rt></ruby>！</span>
+          </div>
+          <div class="feedback-wrong hidden" id="feedback-wrong">
+            <span class="fb-emoji">💪</span>
+            <span class="fb-text" id="feedback-wrong-text"></span>
+          </div>
+        </div>
+
+      </div><!-- /question-area -->
+    </section>
+
+  </main>
+
+  <!-- Particle Layer -->
+  <div id="particle-layer" class="particle-layer"></div>
+
+  <!-- Scripts -->
+  <script src="js/zhuyin.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/flowers.js"></script>
+  <script src="js/particles.js"></script>
+  <script src="js/questions.js"></script>
+  <script src="js/app.js"></script>
+</body>
 </html>

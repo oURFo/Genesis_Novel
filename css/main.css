@@ -1,0 +1,982 @@
+/* ============================================
+   花圃數學園 - Main Styles
+   ============================================ */
+
+/* --- Reset & Base --- */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --green-dark:   #2d6a4f;
+  --green-mid:    #52b788;
+  --green-light:  #b7e4c7;
+  --green-pale:   #d8f3dc;
+  --cream:        #fefae0;
+  --warm-white:   #fffef5;
+  --brown-dark:   #6b4c2a;
+  --brown-mid:    #a0785a;
+  --brown-light:  #d4a76a;
+  --accent-pink:  #f48fb1;
+  --accent-yellow:#ffd166;
+  --accent-orange:#f4a261;
+  --danger:       #e63946;
+  --shadow-sm:    0 2px 8px rgba(0,0,0,.10);
+  --shadow-md:    0 4px 16px rgba(0,0,0,.15);
+  --shadow-lg:    0 8px 32px rgba(0,0,0,.20);
+  --radius-sm:    8px;
+  --radius-md:    14px;
+  --radius-lg:    20px;
+  --radius-xl:    28px;
+  --font-main:    'Segoe UI', 'Microsoft JhengHei', '微軟正黑體', sans-serif;
+  --header-h:     56px;
+}
+
+html, body {
+  height: 100%;
+  font-family: var(--font-main);
+  background: var(--green-pale);
+  color: #2c3e50;
+  overflow: hidden;
+}
+
+/* --- Utility --- */
+.hidden { display: none !important; }
+
+/* ============================================
+   Modals
+   ============================================ */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+  animation: fadeIn .25s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.modal-box {
+  background: var(--warm-white);
+  border-radius: var(--radius-xl);
+  padding: 36px 40px;
+  max-width: 420px;
+  width: 90%;
+  text-align: center;
+  box-shadow: var(--shadow-lg);
+  animation: slideUp .3s ease;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(30px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+.modal-icon { font-size: 2.8rem; margin-bottom: 12px; }
+
+.modal-box h2 {
+  font-size: 1.6rem;
+  color: var(--green-dark);
+  margin-bottom: 8px;
+}
+
+.modal-box h3 {
+  font-size: 1.3rem;
+  color: var(--brown-dark);
+  margin-bottom: 8px;
+}
+
+.modal-box p {
+  color: #555;
+  line-height: 1.6;
+  margin-bottom: 20px;
+  font-size: 1rem;
+}
+
+/* Onboarding */
+.onboarding-box .onboarding-deco {
+  font-size: 3.5rem;
+  margin-bottom: 12px;
+  display: block;
+  animation: bounce 1.2s infinite ease-in-out;
+}
+
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-8px); }
+}
+
+.onboarding-box label {
+  display: block;
+  font-size: .95rem;
+  color: #666;
+  margin-bottom: 8px;
+}
+
+.onboarding-box input {
+  width: 100%;
+  padding: 12px 16px;
+  border: 2px solid var(--green-light);
+  border-radius: var(--radius-md);
+  font-size: 1.2rem;
+  text-align: center;
+  outline: none;
+  margin-bottom: 20px;
+  font-family: var(--font-main);
+  transition: border-color .2s;
+}
+
+.onboarding-box input:focus {
+  border-color: var(--green-mid);
+}
+
+/* Buttons */
+.btn-primary {
+  background: linear-gradient(135deg, var(--green-mid), var(--green-dark));
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-md);
+  padding: 13px 28px;
+  font-size: 1.1rem;
+  font-family: var(--font-main);
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(82,183,136,.4);
+  transition: transform .15s, box-shadow .15s;
+}
+
+.btn-primary:hover  { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(82,183,136,.5); }
+.btn-primary:active { transform: translateY(0); }
+
+.btn-secondary {
+  background: #f0f0f0;
+  color: #555;
+  border: none;
+  border-radius: var(--radius-md);
+  padding: 12px 24px;
+  font-size: 1rem;
+  font-family: var(--font-main);
+  cursor: pointer;
+  transition: background .15s;
+}
+
+.btn-secondary:hover { background: #e0e0e0; }
+
+.btn-danger {
+  background: linear-gradient(135deg, #e63946, #c1121f);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-md);
+  padding: 12px 24px;
+  font-size: 1rem;
+  font-family: var(--font-main);
+  cursor: pointer;
+  transition: transform .15s;
+}
+
+.btn-danger:hover { transform: translateY(-1px); }
+
+.modal-buttons {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 4px;
+}
+
+/* Level Up Modal */
+.levelup-box .levelup-flower-display {
+  font-size: 5rem;
+  margin-bottom: 12px;
+  animation: bloom-pop .5s ease;
+}
+
+@keyframes bloom-pop {
+  0%   { transform: scale(0.2) rotate(-15deg); opacity: 0; }
+  70%  { transform: scale(1.15) rotate(5deg); }
+  100% { transform: scale(1) rotate(0); opacity: 1; }
+}
+
+.levelup-box h2 {
+  font-size: 1.8rem;
+  color: var(--green-dark);
+  margin-bottom: 8px;
+}
+
+/* ============================================
+   Ruby / 注音 Annotations
+   ============================================
+   ‧ ruby        → 字 (左) + rt (右)，橫向排列
+   ‧ rt          → zy-b (音符，直排) + zy-t (調號，橫排右上角)
+   ============================================ */
+ruby {
+  display: inline-flex;
+  flex-direction: row;      /* 字在左，注音在右 */
+  align-items: center;      /* 垂直置中對齊 */
+  vertical-align: middle;   /* 與行內其他元素置中對齊 */
+  line-height: 1.5;         /* 調整為更緊湊美觀的行高 */
+}
+
+rt {
+  display: inline-flex;
+  flex-direction: row;      /* 音符直排區 + 調號橫排區 並列 */
+  align-items: center;      /* 調號置中對齊 */
+  font-family: 'BiauKai', '標楷體', 'Microsoft JhengHei', '微軟正黑體', 'MingLiU', 'PMingLiU', sans-serif;
+  font-size: .44em;
+  margin-left: .1em;
+  white-space: nowrap;
+  line-height: 1;
+}
+
+/* 注音音符本體（聲母 + 韻母）— 直排 */
+.zy-b {
+  writing-mode: vertical-rl;
+  text-orientation: upright;
+  line-height: 1.1;
+  letter-spacing: 0;
+  color: #777;
+}
+
+/* 調號（ˊˇˋ˙）— 橫排，顯示在音符右側置中 */
+.zy-t {
+  writing-mode: horizontal-tb;
+  color: #777;
+  font-size: .95em;
+  line-height: 1;
+  margin-top: 0;
+}
+
+/* 輕聲（˙）專屬排版：聲母在上，音母在下，垂直置中 */
+rt.light-tone {
+  flex-direction: column;    /* 改為上下排列 */
+  align-items: center;       /* 水平居中對齊 */
+  justify-content: flex-end; /* 底部對齊以貼近漢字 */
+  line-height: 0.95;         /* 更緊湊的行高讓輕聲點靠近音符 */
+}
+
+rt.light-tone .zy-t {
+  margin-bottom: 0.1em;      /* 調整輕聲點與下方音符本體的距離 */
+  font-size: 1.1em;          /* 輕聲點稍微變大更容易看清 */
+}
+
+
+/* ============================================
+   Fullscreen Button
+   ============================================ */
+.fullscreen-btn {
+  background: none;
+  border: 2px solid transparent;
+  border-radius: var(--radius-sm, 6px);
+  font-size: 1.15rem;
+  line-height: 1;
+  padding: 4px 7px;
+  cursor: pointer;
+  color: var(--green-dark);
+  transition: background .15s, border-color .15s;
+  margin-right: 4px;
+}
+.fullscreen-btn:hover  { background: rgba(0,0,0,.07); border-color: rgba(0,0,0,.12); }
+.fullscreen-btn:active { background: rgba(0,0,0,.14); }
+
+/* ============================================
+   App Header
+   ============================================ */
+.app-header {
+  height: var(--header-h);
+  background: linear-gradient(135deg, var(--green-dark) 0%, var(--green-mid) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  box-shadow: var(--shadow-sm);
+  position: relative;
+  z-index: 10;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.app-logo { font-size: 1.6rem; }
+
+.app-title {
+  font-size: 1.25rem;
+  color: #fff;
+  font-weight: 700;
+  letter-spacing: .5px;
+}
+
+/* ============================================
+   Grade Tabs
+   ============================================ */
+.grade-tabs {
+  display: flex;
+  gap: 4px;
+  background: rgba(0,0,0,.2);
+  border-radius: 20px;
+  padding: 3px;
+  margin-left: 8px;
+}
+
+.grade-tab {
+  background: transparent;
+  border: none;
+  border-radius: 16px;
+  padding: 5px 14px;
+  font-size: .85rem;
+  font-family: var(--font-main);
+  color: rgba(255,255,255,.75);
+  cursor: pointer;
+  transition: background .2s, color .2s, transform .15s;
+  white-space: nowrap;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.grade-tab:hover {
+  background: rgba(255,255,255,.15);
+  color: #fff;
+}
+
+.grade-tab.active {
+  background: #fff;
+  color: var(--green-dark);
+  box-shadow: 0 2px 8px rgba(0,0,0,.2);
+}
+
+.grade-tab.active:hover {
+  transform: none;
+}
+
+/* Grade 2 active colour — teal-green accent */
+.grade-tab[data-grade="2"].active {
+  background: #e8f5e9;
+  color: #1b5e20;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.player-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255,255,255,.15);
+  padding: 6px 14px;
+  border-radius: 20px;
+}
+
+.player-avatar { font-size: 1.1rem; }
+
+.player-name-display {
+  color: #fff;
+  font-size: .95rem;
+  font-weight: 600;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reset-btn {
+  background: rgba(255,255,255,.2);
+  border: none;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  font-size: 1rem;
+  cursor: pointer;
+  color: #fff;
+  transition: background .2s, transform .2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.reset-btn:hover { background: rgba(255,255,255,.35); transform: rotate(90deg); }
+
+/* ============================================
+   App Layout
+   ============================================ */
+.app-main {
+  display: flex;
+  height: calc(100vh - var(--header-h));
+  overflow: hidden;
+}
+
+/* ============================================
+   Garden Panel (Left)
+   ============================================ */
+.garden-panel {
+  width: 38%;
+  min-width: 260px;
+  max-width: 380px;
+  background: linear-gradient(180deg, #1b4332 0%, var(--green-dark) 60%, #40916c 100%);
+  display: flex;
+  flex-direction: column;
+  padding: 16px 14px 12px;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Decorative soil texture at bottom */
+.garden-panel::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 32px;
+  background: linear-gradient(180deg, transparent, rgba(107,76,42,.4));
+  pointer-events: none;
+}
+
+.garden-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.garden-title {
+  color: var(--green-pale);
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.garden-stats {
+  background: rgba(255,255,255,.15);
+  color: #fff;
+  font-size: .8rem;
+  padding: 3px 10px;
+  border-radius: 12px;
+}
+
+/* Flower Grid */
+.flower-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  flex: 1;
+  align-content: start;
+}
+
+/* Individual Flower Card */
+.flower-card {
+  background: rgba(255,255,255,.10);
+  border-radius: var(--radius-md);
+  padding: 8px 6px 6px;
+  cursor: pointer;
+  transition: transform .2s, background .2s, box-shadow .2s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  border: 2px solid transparent;
+  position: relative;
+  min-height: 90px;
+}
+
+.flower-card:hover {
+  background: rgba(255,255,255,.2);
+  transform: translateY(-3px);
+  box-shadow: 0 6px 16px rgba(0,0,0,.25);
+}
+
+.flower-card.active {
+  border-color: var(--accent-yellow);
+  background: rgba(255,209,102,.15);
+  box-shadow: 0 0 0 3px rgba(255,209,102,.3);
+}
+
+.flower-card.bloomed {
+  border-color: var(--accent-pink);
+}
+
+.flower-svg-wrap {
+  width: 56px;
+  height: 56px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  position: relative;
+}
+
+.flower-name {
+  font-size: .7rem;
+  color: rgba(255,255,255,.85);
+  text-align: center;
+  line-height: 1.2;
+}
+
+.flower-mini-progress {
+  width: 100%;
+  height: 4px;
+  background: rgba(255,255,255,.15);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.flower-mini-fill {
+  height: 100%;
+  background: var(--accent-yellow);
+  border-radius: 2px;
+  transition: width .4s ease;
+}
+
+/* Garden Legend */
+.garden-footer {
+  margin-top: 10px;
+  text-align: center;
+}
+.garden-footer a {
+  font-size: .68rem;
+  color: rgba(255,255,255,.28);
+  text-decoration: none;
+  letter-spacing: .02em;
+}
+.garden-footer a:hover {
+  color: rgba(255,255,255,.55);
+}
+
+.garden-legend {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255,255,255,.1);
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: .68rem;
+  color: rgba(255,255,255,.7);
+}
+
+.legend-stage {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.legend-stage.s0 { background: #795548; }
+.legend-stage.s1 { background: #81c784; }
+.legend-stage.s2 { background: #4caf50; }
+.legend-stage.s3 { background: #ffd54f; }
+.legend-stage.s4 { background: #f48fb1; }
+
+/* ============================================
+   Question Panel (Right)
+   ============================================ */
+.question-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: var(--warm-white);
+  overflow: hidden;
+  position: relative;
+}
+
+/* No-topic placeholder */
+.no-topic-placeholder {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.placeholder-content {
+  text-align: center;
+  color: #aaa;
+}
+
+.placeholder-icon {
+  font-size: 3rem;
+  margin-bottom: 12px;
+  animation: point-left 1.5s ease-in-out infinite;
+}
+
+@keyframes point-left {
+  0%, 100% { transform: translateX(0); }
+  50%       { transform: translateX(-10px); }
+}
+
+.placeholder-content p {
+  font-size: 1.1rem;
+  line-height: 1.6;
+}
+
+/* Question Area */
+.question-area {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* --- Topic Bar --- */
+.question-topic-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 18px;
+  background: linear-gradient(135deg, var(--green-pale), #e8f8f5);
+  border-bottom: 2px solid var(--green-light);
+  flex-shrink: 0;
+}
+
+.q-flower-icon { font-size: 1.5rem; }
+
+.q-topic-name {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--green-dark);
+  min-width: 60px;
+}
+
+.q-progress-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.q-progress-bar {
+  flex: 1;
+  height: 8px;
+  background: #ddd;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.q-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--green-mid), var(--green-dark));
+  border-radius: 4px;
+  transition: width .5s ease;
+}
+
+.q-progress-text {
+  font-size: .8rem;
+  color: #888;
+  white-space: nowrap;
+}
+
+/* --- Question Content --- */
+.question-content {
+  padding: 14px 20px 10px;
+  border-bottom: 1px solid #eee;
+  flex-shrink: 0;
+}
+
+.question-number {
+  font-size: .78rem;
+  color: #aaa;
+  margin-bottom: 6px;
+}
+
+/* 情境題：故事情境段落 */
+.question-context {
+  background: #fff8e1;
+  border-left: 4px solid #ffd54f;
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  padding: 10px 14px;
+  margin-bottom: 10px;
+  font-size: 1.05rem;
+  line-height: 2.4;
+  color: #5d4037;
+  word-break: break-all;
+}
+
+.question-text {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #2c3e50;
+  line-height: 1.5;
+  margin-bottom: 10px;
+}
+
+.question-visual {
+  font-size: 2rem;
+  letter-spacing: 4px;
+  min-height: 36px;
+  margin-bottom: 8px;
+}
+
+/* Multiple Choice Options */
+.mc-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.mc-btn {
+  background: #f5f5f5;
+  border: 2px solid #ddd;
+  border-radius: var(--radius-md);
+  padding: 12px;
+  font-size: 1.15rem;
+  font-family: var(--font-main);
+  cursor: pointer;
+  transition: background .25s, border-color .25s;
+  font-weight: 600;
+  color: #333;
+  /* Disable all browser-native touch/hover highlight so nothing sticks */
+  -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none;
+  user-select: none;
+  outline: none;
+  touch-action: manipulation;
+}
+
+/* No hover/active colour change — avoids the sticky-green problem on tablets.
+   Visual feedback comes only from .correct / .wrong set by JS after evaluation. */
+.mc-btn:focus { outline: none; }
+
+.mc-btn.correct {
+  background: #d4edda;
+  border-color: #28a745;
+  color: #155724;
+  animation: pulse-green .4s ease;
+}
+
+.mc-btn.wrong {
+  background: #f8d7da;
+  border-color: var(--danger);
+  color: #721c24;
+  animation: shake .3s ease;
+}
+
+.mc-btn.reveal-correct {
+  background: #d4edda;
+  border-color: #28a745;
+  color: #155724;
+}
+
+@keyframes pulse-green {
+  0%,100% { transform: scale(1); }
+  50%      { transform: scale(1.04); }
+}
+
+@keyframes shake {
+  0%,100% { transform: translateX(0); }
+  25%      { transform: translateX(-4px); }
+  75%      { transform: translateX(4px); }
+}
+
+/* ============================================
+   Scratchpad Area
+   ============================================ */
+.scratchpad-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
+  background: #fafafa;
+  border-bottom: 2px solid #eee;
+  min-height: 0;
+}
+
+.scratchpad-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: #f0f0f0;
+  border-bottom: 1px solid #e0e0e0;
+  flex-shrink: 0;
+}
+
+.tool-btn {
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: var(--radius-sm);
+  width: 36px;
+  height: 32px;
+  font-size: .9rem;
+  cursor: pointer;
+  transition: all .15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tool-btn:hover  { background: var(--green-pale); border-color: var(--green-mid); }
+.tool-btn.active { background: var(--green-light); border-color: var(--green-dark); }
+
+.tool-label {
+  font-size: .75rem;
+  color: #aaa;
+  flex: 1;
+  text-align: center;
+}
+
+#stroke-size {
+  width: 70px;
+  accent-color: var(--green-dark);
+  cursor: pointer;
+}
+
+.scratchpad-canvas {
+  flex: 1;
+  width: 100%;
+  cursor: crosshair;
+  touch-action: none;
+  background: #fff;
+  display: block;
+}
+
+/* ============================================
+   Answer Area
+   ============================================ */
+.answer-area {
+  flex-shrink: 0;
+  padding: 10px 16px 12px;
+  background: var(--cream);
+  border-top: 2px solid var(--green-light);
+}
+
+.answer-display-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.answer-label {
+  font-size: .9rem;
+  color: #777;
+  font-weight: 600;
+}
+
+.answer-value-display {
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: var(--green-dark);
+  min-width: 60px;
+  background: #fff;
+  border: 2px solid var(--green-light);
+  border-radius: var(--radius-sm);
+  padding: 4px 12px;
+  text-align: center;
+  letter-spacing: 2px;
+}
+
+/* Number Pad */
+.numpad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.np-btn {
+  background: #fff;
+  border: 2px solid #ddd;
+  border-radius: var(--radius-sm);
+  height: 44px;
+  font-size: 1.3rem;
+  font-family: var(--font-main);
+  font-weight: 700;
+  cursor: pointer;
+  transition: all .15s;
+  color: #333;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.np-btn:hover  { background: var(--green-pale); border-color: var(--green-mid); transform: translateY(-1px); }
+.np-btn:active { transform: scale(.95); }
+
+.np-zero { grid-column: span 2; }
+
+.np-del {
+  background: #fff8f8;
+  border-color: #ffcdd2;
+  color: var(--danger);
+}
+
+.np-del:hover { background: #ffebee; }
+
+/* Submit Button */
+.submit-btn {
+  width: 100%;
+  padding: 13px;
+  background: linear-gradient(135deg, var(--green-mid), var(--green-dark));
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 1.1rem;
+  font-weight: 700;
+  font-family: var(--font-main);
+  cursor: pointer;
+  transition: transform .15s, box-shadow .15s;
+  box-shadow: 0 4px 12px rgba(82,183,136,.35);
+}
+
+.submit-btn:hover  { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(82,183,136,.5); }
+.submit-btn:active { transform: translateY(0); }
+.submit-btn:disabled { opacity: .5; cursor: not-allowed; transform: none; }
+
+/* Feedback */
+.answer-feedback {
+  margin-top: 8px;
+  text-align: center;
+  animation: slideUp .2s ease;
+}
+
+.feedback-correct,
+.feedback-wrong {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px;
+  border-radius: var(--radius-md);
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.feedback-correct {
+  background: #d4edda;
+  color: #155724;
+}
+
+.feedback-wrong {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.fb-emoji { font-size: 1.4rem; }
+
+/* ============================================
+   Particle Layer
+   ============================================ */
+.particle-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 500;
+  overflow: hidden;
+}

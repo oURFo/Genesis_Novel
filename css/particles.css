@@ -1,0 +1,108 @@
+/* ============================================
+   花圃數學園 - Particle Animation Styles
+   ============================================ */
+
+.particle {
+  position: fixed;
+  pointer-events: none;
+  border-radius: 50%;
+  z-index: 500;
+  will-change: transform, opacity;
+}
+
+/* Light sparkle particle */
+.particle-sparkle {
+  width: 8px;
+  height: 8px;
+  background: radial-gradient(circle, #ffd166 0%, #f4a261 60%, transparent 100%);
+  box-shadow: 0 0 6px #ffd166;
+}
+
+/* Star particle */
+.particle-star::after {
+  content: '✨';
+  position: absolute;
+  font-size: .7rem;
+  transform: translate(-50%, -50%);
+}
+
+/* Petal particle */
+.particle-petal {
+  width: 10px;
+  height: 6px;
+  border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+  background: linear-gradient(135deg, #f8bbd9, #f48fb1);
+  transform-origin: center;
+}
+
+/* Green leaf particle */
+.particle-leaf {
+  width: 8px;
+  height: 12px;
+  border-radius: 50% 0 50% 0;
+  background: linear-gradient(135deg, #81c784, #52b788);
+}
+
+/* Particle fly-to animation */
+@keyframes particle-fly {
+  0%   { opacity: 1; transform: scale(1); }
+  80%  { opacity: .8; }
+  100% { opacity: 0; transform: scale(0.3); }
+}
+
+/* Burst animation for correct answer feedback */
+.burst-ring {
+  position: fixed;
+  border-radius: 50%;
+  border: 3px solid #ffd166;
+  pointer-events: none;
+  z-index: 499;
+  animation: burst-ring-anim .6s ease-out forwards;
+}
+
+@keyframes burst-ring-anim {
+  0%   { transform: scale(0); opacity: 1; }
+  100% { transform: scale(3); opacity: 0; }
+}
+
+/* Star rain from top */
+.star-fall {
+  position: fixed;
+  top: -20px;
+  pointer-events: none;
+  font-size: 1.2rem;
+  z-index: 501;
+  animation: star-fall-anim linear forwards;
+}
+
+@keyframes star-fall-anim {
+  0%   { transform: translateY(0) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(100vh) rotate(360deg); opacity: 0; }
+}
+
+/* Flower bloom effect on the garden card */
+.card-bloom-fx {
+  position: absolute;
+  inset: -6px;
+  border-radius: var(--radius-md);
+  background: transparent;
+  box-shadow: inset 0 0 0 4px var(--accent-yellow);
+  animation: card-bloom-fx-anim .5s ease forwards;
+  pointer-events: none;
+  z-index: 5;
+}
+
+@keyframes card-bloom-fx-anim {
+  0%   { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.3); }
+}
+
+/* Correct answer glow on submit button */
+.submit-btn.correct-glow {
+  animation: correct-glow .5s ease;
+}
+
+@keyframes correct-glow {
+  0%,100% { box-shadow: 0 4px 12px rgba(82,183,136,.35); }
+  50%      { box-shadow: 0 4px 24px rgba(82,183,136,.9), 0 0 40px rgba(255,209,102,.4); }
+}
