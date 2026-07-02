@@ -965,7 +965,8 @@ export default function App() {
                   ))}
                 </div>
                 <p className="text-[11px] text-ink-light mt-2 leading-relaxed font-serif">
-                  💡 金鑰完全保存在瀏覽器本機中。遇到配額上限（429）或服務繁忙時，系統會自動切換到下一組金鑰繼續生成。
+                  💡 金鑰完全保存在瀏覽器本機中。遇到配額上限（429）或服務繁忙時，系統會自動切換到下一組金鑰繼續生成。<br/>
+                  ⚠️ <strong>重要</strong>：同一個 Google 帳號申請的所有金鑰共用同一份每日配額。若要讓多組金鑰真正獨立運作，請使用<strong>不同 Google 帳號</strong>各自在 AI Studio 申請金鑰。
                 </p>
               </div>
 
@@ -1877,7 +1878,8 @@ export default function App() {
                         ))}
                       </div>
                       <p className="text-[10px] text-ink-light mt-1.5 leading-relaxed">
-                        遇配額上限時自動切換下一組。從 <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="text-editorial-accent underline">Google AI Studio</a> 免費取得。
+                        遇配額上限時自動切換下一組。從 <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="text-editorial-accent underline">Google AI Studio</a> 免費取得。<br/>
+                        ⚠️ 同帳號的金鑰共用配額，需<strong>不同 Google 帳號</strong>才能各自獨立。
                       </p>
                     </div>
                     {/* Story info */}

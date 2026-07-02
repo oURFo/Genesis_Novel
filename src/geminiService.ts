@@ -242,28 +242,36 @@ async function tryWithSingleKey(payload: GeneratePayload, apiKey: string): Promi
 
   if (!response.ok) {
     const errorText = await response.text();
-    let errorMessage = "API 呼叫失敗，請稍後重試。";
+    const status = response.status;
+    // Always log full details to the browser console for debugging
+    console.error(`[Gemini API] HTTP ${status} — raw body:`, errorText.slice(0, 500));
+
+    let errorMessage = `API 呼叫失敗（HTTP ${status}），請稍後重試。`;
     try {
       const errJson = JSON.parse(errorText);
       const rawMsg: string = errJson?.error?.message || "";
-      const status = response.status;
+      const rawStatus: string = errJson?.error?.status || "";
 
-      if (status === 429 || rawMsg.includes("RESOURCE_EXHAUSTED") || rawMsg.includes("quota") || rawMsg.includes("Quota")) {
-        errorMessage = "⏳ QUOTA";   // sentinel for rotation logic
-      } else if (status === 503 || rawMsg.includes("overloaded") || rawMsg.includes("unavailable") || rawMsg.includes("UNAVAILABLE")) {
-        errorMessage = "🔄 BUSY";    // sentinel for rotation logic
+      if (status === 429 || rawStatus === "RESOURCE_EXHAUSTED" || rawMsg.toLowerCase().includes("quota") || rawMsg.includes("RESOURCE_EXHAUSTED")) {
+        errorMessage = "⏳ QUOTA";
+      } else if (status === 503 || rawStatus === "UNAVAILABLE" || rawMsg.toLowerCase().includes("overloaded") || rawMsg.toLowerCase().includes("unavailable")) {
+        errorMessage = "🔄 BUSY";
       } else if (status === 500) {
-        errorMessage = "⚠️ Gemini 伺服器發生錯誤，請稍後重試。";
-      } else if (status === 401 || rawMsg.includes("API_KEY_INVALID") || rawMsg.includes("invalid_key")) {
-        errorMessage = "🔑 API Key 無效或已過期，請重新確認金鑰是否正確。";
-      } else if (status === 403 || rawMsg.includes("permission") || rawMsg.includes("PERMISSION_DENIED")) {
-        errorMessage = "🚫 API Key 無使用權限，請確認金鑰並重試。";
+        errorMessage = `⚠️ Gemini 伺服器錯誤（500），請稍後重試。`;
+      } else if (status === 401 || rawStatus === "UNAUTHENTICATED" || rawMsg.includes("API_KEY_INVALID")) {
+        errorMessage = `🔑 第 Key 無效或未授權（401），請重新確認。`;
+      } else if (status === 403 || rawStatus === "PERMISSION_DENIED") {
+        errorMessage = `🚫 無使用權限（403）：${rawMsg.slice(0, 80)}`;
+      } else if (status === 404) {
+        errorMessage = `❌ 找不到模型（404）：${rawMsg.slice(0, 80)}`;
       } else if (status === 400) {
-        errorMessage = "❌ 請求格式錯誤，請重試或重新整理頁面。";
+        errorMessage = `❌ 請求錯誤（400）：${rawMsg.slice(0, 80)}`;
       } else {
-        errorMessage = `AI 回傳錯誤（${status}），請稍後重試。`;
+        errorMessage = `AI 錯誤（${status}）：${rawMsg.slice(0, 80)}`;
       }
-    } catch (_) {}
+    } catch (_) {
+      errorMessage = `API 回傳非 JSON（HTTP ${status}）：${errorText.slice(0, 80)}`;
+    }
     throw new Error(errorMessage);
   }
 
@@ -288,26 +296,40 @@ async function generateChapterClientSide(payload: GeneratePayload, apiKeys: stri
   const validKeys = apiKeys.map(k => k.trim()).filter(Boolean);
   if (validKeys.length === 0) throw new Error("🔑 請先設定至少一組 Gemini API Key。");
 
-  let lastError: Error = new Error("所有 API Key 均無法使用，請稍後重試。");
+  const sleep = (ms: number) => new Promise(res => setTimeout(res, ms));
+  const keyErrors: string[] = [];
 
   for (let i = 0; i < validKeys.length; i++) {
     try {
+      if (i > 0) await sleep(2000);
+      console.log(`[Key #${i + 1}] 嘗試中...`);
       return await tryWithSingleKey(payload, validKeys[i]);
     } catch (err: any) {
-      lastError = err;
       const msg: string = err.message || "";
-      // Rotate to next key only on quota / service-busy errors
-      if (msg.includes("QUOTA") || msg.includes("BUSY")) {
-        if (i < validKeys.length - 1) continue;   // try next key
-        // All keys exhausted
-        throw new Error(`⏳ 所有 ${validKeys.length} 組 API Key 均已達配額上限，請等待約 1 分鐘後重試。`);
+      keyErrors.push(`#${i + 1}: ${msg}`);
+      console.warn(`[Key #${i + 1}] 失敗：${msg}`);
+
+      const isQuotaOrBusy = msg.includes("QUOTA") || msg.includes("BUSY");
+
+      if (isQuotaOrBusy && i < validKeys.length - 1) {
+        continue; // try next key
       }
-      // For other errors (invalid key, bad request, etc.), fail immediately
+
+      // All keys tried (or non-quota error)
+      if (isQuotaOrBusy) {
+        throw new Error(
+          `⏳ 所有 ${validKeys.length} 組 API Key 均無法使用：\n` +
+          keyErrors.join("\n") +
+          `\n\n可能原因：同一 Google 帳號金鑰共用配額；或所有帳號今日配額均已耗盡。`
+        );
+      }
+
+      // Non-quota / non-busy error — pass through as-is
       throw err;
     }
   }
 
-  throw lastError;
+  throw new Error("所有 API Key 均無法使用，請稍後重試。");
 }
 
 /**
