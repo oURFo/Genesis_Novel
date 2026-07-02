@@ -222,7 +222,7 @@ export function getResponseSchema() {
  * Attempt generation with a single API key. Throws on any error.
  */
 async function tryWithSingleKey(payload: GeneratePayload, apiKey: string): Promise<any> {
-  const modelName = "gemini-2.0-flash";
+  const modelName = "gemini-1.5-flash";
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
 
   const requestBody = {
