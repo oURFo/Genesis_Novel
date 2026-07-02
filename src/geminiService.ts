@@ -45,7 +45,10 @@ ${startPrompt}
       promptText += `第 ${p.pageNumber} 頁 - 《${p.title}》\n內容：\n${p.content}\n\n`;
     });
   } else {
-    promptText += `【提示】：這是故事的第一頁（第一章）。請根據玩家初始設定，撰寫極具張力、引人入勝的開端！\n`;
+    promptText += `【提示：第一章開場守則】：
+這是故事的第一章，必須從「平凡的起點」切入——不論是小村莊的清晨、破舊的宅院、普通市集或山間小道，請先花大量篇幅描繪主角的日常生活環境與內心世界，讓讀者充分感受到主角目前的「平凡背景」。
+❌ 禁止：第一章立即出現重要人物、強力敵人、奇遇或重大事件。
+✅ 要求：用細節描寫紮根世界觀，在章節末尾僅可埋下一個微小的伏筆（如：異常的氣息、陌生的傳言、一件小事的不尋常），讓讀者對後續產生好奇即可。\n`;
   }
 
   if (currentCharacter) {
@@ -76,10 +79,14 @@ ${startPrompt}
       winding_down: '【收尾過渡期】本章讓高潮餘波漸息，整理本弧的結果與影響，並在結尾埋下引向下一段旅程的種子。'
     };
 
+    const pacingNote = arcContext.phase === 'transition' || arcContext.phase === 'development'
+      ? `【節奏守則】本章屬鋪陳階段，請務必克制衝突烈度：主角應從小地方（街角、市集、普通任務）出發，透過日常互動、細膩觀察、人際摩擦來推進劇情，不要在本章突然出現超強人物或扭轉全局的大事件。讓緊張感在不知不覺中慢慢積累。\n`
+      : '';
+
     promptText += `【📚 故事結構指引 — 第 ${arcContext.arcNumber} 故事弧，第 ${arcContext.positionInArc}/${arcContext.arcLength} 章】
 本弧主軸事件：「${arcContext.mainEvent}」
 當前階段：${phaseDesc[arcContext.phase]}
-${arcContext.prevArcSummary ? `前一弧線回顧：${arcContext.prevArcSummary}` : ''}
+${pacingNote}${arcContext.prevArcSummary ? `前一弧線回顧：${arcContext.prevArcSummary}` : ''}
 ${arcContext.isNewArc ? '⚡ 本章為新故事弧的開篇章節，請自然地從上一段落過渡，同時埋下本弧主軸衝突的種子。如需設計本弧的核心主軸，請在 newArcEvent 欄位回傳你設計的本弧主軸事件（30字內）。' : ''}
 【重要】不要向讀者明確告知「故事弧」或「結構」等元概念，一切以沉浸式小說敘事呈現。
 \n`;
@@ -107,13 +114,14 @@ ${endingArcStep <= climaxStart
 
   promptText += `【續寫任務】：
 請為主角撰寫第 ${nextPageNumber} 頁的故事。
-1. 小說故事內容 (content) 長度絕對不能少於 1000 字，必須在 1000 至 1500 字之間。斷行與段落必須清晰明確，段落與段落之間使用雙換行（空行）分開，避免玩家閱讀困難。文筆要精緻豐富，著重心理描寫、生動對話、場景渲染和情境氣氛，每個段落都要有充實的細節描寫，請用繁體中文撰寫。
-2. 小說標題 (novelTitle)：如果是第一章，請原創一個契合故事大綱的宏大小說名稱；若非第一章，請回傳原小說標題即可。
-3. 章節標題 (chapterTitle)：本章的子標題，例如：「第一章：命運的交錯」或「第二章：幽谷深處」。如果是在大結局模式下，標題必須體現這是最終章/結局。
-4. 主角狀態更新 (characterUpdate)：
+1. 小說故事內容 (content) 長度目標為 1800 至 2500 字（絕對不能少於 1500 字）。段落與段落之間使用雙換行（空行）分開，每段至少 3-5 句，著重心理描寫、生動對話、場景渲染和環境氣氛，避免流水帳。請用繁體中文撰寫。
+2. 【循序漸進守則】：除非已到高潮或結局章節，否則主角的際遇應符合「從小地方慢慢發展壯大」的邏輯——先在小鎮、邊境、普通環境發生的事，再逐步接觸到更大的勢力或重要人物。每章節的衝突烈度應比上一章略微遞增，而非每章都是大事件。
+3. 小說標題 (novelTitle)：如果是第一章，請原創一個契合故事大綱的宏大小說名稱；若非第一章，請回傳原小說標題即可。
+4. 章節標題 (chapterTitle)：本章的子標題，例如：「第一章：命運的交錯」或「第二章：幽谷深處」。如果是在大結局模式下，標題必須體現這是最終章/結局。
+5. 主角狀態更新 (characterUpdate)：
    - 請根據本章發展更新主角的屬性、隨身攜帶的道具、當前目標和身體狀態（例如：主角拿到新武器就加入背包；主角受傷了就把生命值扣減，並把狀態改為「受輕傷」；主角達成了舊目標就移除它，並加入新目標）。
    - 請提供符合故事的 attributes（生命值、精神值、境界或實力、特質，值使用字串）。
-5. 名詞/實體增量更新 (glossaryUpdates)：
+6. 名詞/實體增量更新 (glossaryUpdates)：
    - 提取本章中新出現的、或有了重大進展的人物、地點、組織、特殊道具。
    - 描述中要寫出他們在本章所扮演的角色或目前已知的秘密。
    - 類別 category 只能是以下之一：'人物', '組織', '地點', '道具', '其他'。`;
@@ -138,7 +146,7 @@ export function getResponseSchema() {
       },
       content: {
         type: "STRING",
-        description: "本章節的小說文本內容，必須在 1000 至 1500 字之間，繁體中文，文筆精緻豐富，生動感人，段落分明，每段有充實細節，接續上一頁發展。"
+        description: "本章節的小說文本內容，目標 1800-2500 字（不得少於 1500 字），繁體中文，文筆精緻豐富，段落分明，每段有充實細節，依據循序漸進守則控制衝突烈度。"
       },
       characterUpdate: {
         type: "OBJECT",
@@ -230,11 +238,27 @@ async function generateChapterClientSide(payload: GeneratePayload, apiKey: strin
 
   if (!response.ok) {
     const errorText = await response.text();
-    let errorMessage = "API Key 呼叫錯誤，請確認 API Key 是否正確。";
+    let errorMessage = "API 呼叫失敗，請稍後重試。";
     try {
       const errJson = JSON.parse(errorText);
-      if (errJson?.error?.message) {
-        errorMessage = errJson.error.message;
+      const rawMsg: string = errJson?.error?.message || "";
+      const status = response.status;
+
+      if (status === 429 || rawMsg.includes("RESOURCE_EXHAUSTED") || rawMsg.includes("quota") || rawMsg.includes("Quota")) {
+        errorMessage = "⏳ API 呼叫已達免費配額上限，請等待約 1 分鐘後再重試。";
+      } else if (status === 503 || rawMsg.includes("overloaded") || rawMsg.includes("unavailable") || rawMsg.includes("UNAVAILABLE")) {
+        errorMessage = "🔄 Gemini 服務目前繁忙，請稍等幾秒後重試。";
+      } else if (status === 500) {
+        errorMessage = "⚠️ Gemini 伺服器發生錯誤，請稍後重試。";
+      } else if (status === 401 || rawMsg.includes("API_KEY_INVALID") || rawMsg.includes("invalid_key")) {
+        errorMessage = "🔑 API Key 無效或已過期，請重新確認金鑰是否正確。";
+      } else if (status === 403 || rawMsg.includes("permission") || rawMsg.includes("PERMISSION_DENIED")) {
+        errorMessage = "🚫 API Key 無使用權限，請確認金鑰並重試。";
+      } else if (status === 400) {
+        errorMessage = "❌ 請求格式錯誤，請重試或重新整理頁面。";
+      } else if (rawMsg) {
+        // Trim overly long raw English messages
+        errorMessage = `AI 回傳錯誤（${status}），請稍後重試。`;
       }
     } catch (_) {}
     throw new Error(errorMessage);
@@ -285,8 +309,15 @@ export async function generateNovelChapter(payload: GeneratePayload): Promise<an
   });
 
   if (!response.ok) {
-    const errData = await response.json();
-    throw new Error(errData.error || "伺服器連線失敗或生成章節錯誤。");
+    const errData = await response.json().catch(() => ({}));
+    const rawMsg: string = errData?.error || "";
+    let friendly = "伺服器連線失敗或生成章節時發生錯誤，請重試。";
+    if (rawMsg.includes("quota") || rawMsg.includes("RESOURCE_EXHAUSTED")) {
+      friendly = "⏳ API 配額已達上限，請等待約 1 分鐘後再重試。";
+    } else if (rawMsg.includes("overloaded") || rawMsg.includes("UNAVAILABLE")) {
+      friendly = "🔄 Gemini 服務目前繁忙，請稍後重試。";
+    }
+    throw new Error(friendly);
   }
 
   return response.json();
