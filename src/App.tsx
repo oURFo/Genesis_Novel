@@ -116,7 +116,22 @@ export default function App() {
   const [loadingPhraseIndex, setLoadingPhraseIndex] = useState<number>(0);
   
   // Custom API key, Save states and Ending States
-  const [customApiKey, setCustomApiKey] = useState<string>(() => localStorage.getItem("user_gemini_api_key") || "");
+  // API keys — up to 5; first key synced from lobby input, extras added in settings
+  const [customApiKeys, setCustomApiKeys] = useState<string[]>(() => {
+    try {
+      const stored = localStorage.getItem("user_gemini_api_keys");
+      if (stored) return JSON.parse(stored) as string[];
+    } catch (_) {}
+    // Backward compat: migrate single-key storage
+    const legacy = localStorage.getItem("user_gemini_api_key") || "";
+    return [legacy, "", "", "", ""];
+  });
+
+  const saveApiKeys = (keys: string[]) => {
+    const normalized = keys.slice(0, 5).concat(Array(5).fill("")).slice(0, 5);
+    setCustomApiKeys(normalized);
+    localStorage.setItem("user_gemini_api_keys", JSON.stringify(normalized));
+  };
   const [showSettings, setShowSettings] = useState<boolean>(false);
   const [isEndingMode, setIsEndingMode] = useState<boolean>(false);
   const [isEnded, setIsEnded] = useState<boolean>(false);
@@ -305,7 +320,7 @@ export default function App() {
         nextPageNumber: 1,
         currentCharacter: null,
         currentGlossary: [],
-        customApiKey,
+        customApiKeys,
         isEndingMode: false,
         arcContext: {
           arcNumber: firstArc.arcNumber,
@@ -422,7 +437,7 @@ export default function App() {
         nextPageNumber,
         currentCharacter: lastPage.characterState,
         currentGlossary: lastPage.glossaryState,
-        customApiKey,
+        customApiKeys,
         isEndingMode: isEndingMode,
         arcContext: {
           arcNumber: arc.arcNumber,
@@ -522,7 +537,7 @@ export default function App() {
       nextPageNumber: nextPageNum,
       currentCharacter: lastPage.characterState,
       currentGlossary: lastPage.glossaryState,
-      customApiKey,
+      customApiKeys,
       isEndingMode: endingMode,
       arcContext: {
         arcNumber: arc.arcNumber,
@@ -621,7 +636,7 @@ export default function App() {
           nextPageNumber,
           currentCharacter: lastPage.characterState,
           currentGlossary: lastPage.glossaryState,
-          customApiKey,
+          customApiKeys,
           isEndingMode: isLastChapter,
           endingArcStep: isLastChapter ? undefined : step,
           endingArcTotal: isLastChapter ? undefined : ENDING_ARC_TOTAL
@@ -918,33 +933,39 @@ export default function App() {
             </div>
             
             <div className="p-6 space-y-6">
-              {/* API Key Form */}
+              {/* Multi API Key Form */}
               <div>
-                <label className="block text-xs font-bold text-ink uppercase tracking-widest mb-2 flex items-center justify-between">
-                  <span>🔑 自訂 GEMINI API 金鑰</span>
-                  {customApiKey ? (
-                    <span className="text-[10px] text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded font-sans font-bold">
-                      ● 已啟用自訂金鑰
-                    </span>
-                  ) : (
-                    <span className="text-[10px] text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded font-sans font-bold">
-                      ● 使用系統預設金鑰
-                    </span>
-                  )}
+                <label className="block text-xs font-bold text-ink uppercase tracking-widest mb-3 flex items-center justify-between">
+                  <span>🔑 Gemini API 金鑰（最多 5 組）</span>
+                  <span className="text-[10px] text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded font-sans font-bold">
+                    {customApiKeys.filter(k => k.trim()).length} 組已設定
+                  </span>
                 </label>
-                <input
-                  type="password"
-                  value={customApiKey}
-                  onChange={(e) => {
-                    setCustomApiKey(e.target.value);
-                    localStorage.setItem("user_gemini_api_key", e.target.value);
-                  }}
-                  placeholder="貼上您的 Gemini API 金鑰 (AI Studio 獲取)..."
-                  className="w-full bg-white border border-editorial-border rounded px-3 py-2.5 text-sm text-ink placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-editorial-accent focus:border-editorial-accent transition"
-                />
+                <div className="space-y-2">
+                  {customApiKeys.map((key, idx) => (
+                    <div key={idx} className="flex items-center gap-2">
+                      <span className="text-[10px] text-ink-light font-mono w-10 shrink-0 text-right">#{idx + 1}</span>
+                      <input
+                        type="password"
+                        value={key}
+                        onChange={(e) => {
+                          const next = [...customApiKeys];
+                          next[idx] = e.target.value;
+                          saveApiKeys(next);
+                        }}
+                        placeholder={idx === 0 ? "主要金鑰（必填）" : `備用金鑰 ${idx + 1}（選填）`}
+                        className="flex-1 bg-white border border-editorial-border rounded px-3 py-2 text-xs text-ink placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-editorial-accent focus:border-editorial-accent transition font-mono"
+                      />
+                      {key.trim() ? (
+                        <span className="text-emerald-500 text-xs shrink-0">✓</span>
+                      ) : (
+                        <span className="text-slate-300 text-xs shrink-0">○</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
                 <p className="text-[11px] text-ink-light mt-2 leading-relaxed font-serif">
-                  💡 <strong>安全性說明</strong>：金鑰完全保存在瀏覽器本機 (localStorage) 中。
-                  當您自備金鑰後，點擊右上角 Settings 將此專案<strong>打包下載並部署至 GitHub Pages 靜態網站時，即可 100% 免伺服器免費運行！</strong>
+                  💡 金鑰完全保存在瀏覽器本機中。遇到配額上限（429）或服務繁忙時，系統會自動切換到下一組金鑰繼續生成。
                 </p>
               </div>
 
@@ -1125,7 +1146,7 @@ export default function App() {
             <div className="mb-6 pt-5 border-t border-editorial-border">
               <label className="block text-xs font-bold text-ink uppercase tracking-widest mb-2 flex items-center justify-between font-sans">
                 <span>🔑 Gemini API 金鑰（必填）</span>
-                {customApiKey ? (
+                {customApiKeys[0] ? (
                   <span className="text-[10px] text-emerald-600 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded font-bold">
                     ● 已設定
                   </span>
@@ -1137,10 +1158,11 @@ export default function App() {
               </label>
               <input
                 type="password"
-                value={customApiKey}
+                value={customApiKeys[0] || ""}
                 onChange={(e) => {
-                  setCustomApiKey(e.target.value);
-                  localStorage.setItem("user_gemini_api_key", e.target.value);
+                  const next = [...customApiKeys];
+                  next[0] = e.target.value;
+                  saveApiKeys(next);
                 }}
                 placeholder="貼上您的 Gemini API Key（從 aistudio.google.com 免費取得）"
                 className="w-full bg-white border border-editorial-border rounded px-3 py-2.5 text-sm text-ink placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-editorial-accent focus:border-editorial-accent transition font-mono"
@@ -1148,6 +1170,7 @@ export default function App() {
               <p className="text-[11px] text-ink-light mt-1.5 leading-relaxed">
                 金鑰僅儲存於本機瀏覽器，不會傳送至任何伺服器。
                 前往 <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="text-editorial-accent underline">Google AI Studio</a> 免費取得。
+                進入小說後可在設定中新增最多 5 組，遇配額上限自動切換。
               </p>
             </div>
 
@@ -1822,23 +1845,39 @@ export default function App() {
                 {/* ── 設定 tab ── */}
                 {mobileDrawerTab === 'settings' && (
                   <div className="flex-1 overflow-y-auto p-4 space-y-5">
-                    {/* API Key */}
+                    {/* Multi API Key */}
                     <div>
-                      <label className="block text-[11px] font-bold uppercase tracking-widest text-editorial-accent mb-1.5">
-                        Gemini API Key
-                      </label>
-                      <input
-                        type="password"
-                        value={customApiKey}
-                        onChange={(e) => {
-                          setCustomApiKey(e.target.value);
-                          localStorage.setItem("user_gemini_api_key", e.target.value);
-                        }}
-                        placeholder="貼上您的 API Key..."
-                        className="w-full bg-white border border-editorial-border rounded px-3 py-2 text-xs text-ink placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-editorial-accent/30 transition font-mono"
-                      />
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-[11px] font-bold uppercase tracking-widest text-editorial-accent">
+                          Gemini API 金鑰（最多 5 組）
+                        </p>
+                        <span className="text-[10px] text-emerald-600 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded font-bold">
+                          {customApiKeys.filter(k => k.trim()).length} 組已設定
+                        </span>
+                      </div>
+                      <div className="space-y-2">
+                        {customApiKeys.map((key, idx) => (
+                          <div key={idx} className="flex items-center gap-1.5">
+                            <span className="text-[10px] text-ink-light font-mono w-5 shrink-0 text-right">#{idx + 1}</span>
+                            <input
+                              type="password"
+                              value={key}
+                              onChange={(e) => {
+                                const next = [...customApiKeys];
+                                next[idx] = e.target.value;
+                                saveApiKeys(next);
+                              }}
+                              placeholder={idx === 0 ? "主要金鑰（必填）" : `備用 ${idx + 1}`}
+                              className="flex-1 bg-white border border-editorial-border rounded px-2.5 py-1.5 text-xs text-ink placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-editorial-accent/30 transition font-mono"
+                            />
+                            <span className={`text-xs shrink-0 ${key.trim() ? 'text-emerald-500' : 'text-slate-300'}`}>
+                              {key.trim() ? '✓' : '○'}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
                       <p className="text-[10px] text-ink-light mt-1.5 leading-relaxed">
-                        從 <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="text-editorial-accent underline">Google AI Studio</a> 取得免費 API Key，直接在瀏覽器端呼叫 Gemini。
+                        遇配額上限時自動切換下一組。從 <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="text-editorial-accent underline">Google AI Studio</a> 免費取得。
                       </p>
                     </div>
                     {/* Story info */}

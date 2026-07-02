@@ -11,7 +11,7 @@ export interface GeneratePayload {
   nextPageNumber: number;
   currentCharacter: Character | null;
   currentGlossary: GlossaryItem[];
-  customApiKey?: string | null;
+  customApiKeys?: string[];   // up to 5 keys; rotated on quota errors
   isEndingMode?: boolean;
   endingArcStep?: number;
   endingArcTotal?: number;
@@ -40,8 +40,23 @@ ${startPrompt}
 `;
 
   if (pages.length > 0) {
-    promptText += `【前情提要 / 已有章節】：\n`;
-    pages.forEach((p) => {
+    // Tiered context: only the most recent chapters are sent in full to cap token usage.
+    // Earlier chapters are summarised as titles only — the character state, glossary and
+    // arc context already preserve long-term continuity.
+    const FULL_CHAPTERS = 4;
+    const recentPages = pages.slice(-FULL_CHAPTERS);
+    const olderPages  = pages.slice(0, -FULL_CHAPTERS);
+
+    if (olderPages.length > 0) {
+      promptText += `【故事歷程概覽（第 1–${olderPages.length} 章，僅標題）】：\n`;
+      olderPages.forEach((p) => {
+        promptText += `· 第 ${p.pageNumber} 章《${p.title}》\n`;
+      });
+      promptText += `（以上章節的細節已整合至「主角資料」與「世界名詞」中，無須重複展開。）\n\n`;
+    }
+
+    promptText += `【最近章節詳細內容（第 ${recentPages[0].pageNumber}–${recentPages[recentPages.length - 1].pageNumber} 章）】：\n`;
+    recentPages.forEach((p) => {
       promptText += `第 ${p.pageNumber} 頁 - 《${p.title}》\n內容：\n${p.content}\n\n`;
     });
   } else {
@@ -204,35 +219,24 @@ export function getResponseSchema() {
   };
 }
 /**
- * Direct client-side generation using custom API key to support 100% serverless static sites
+ * Attempt generation with a single API key. Throws on any error.
  */
-async function generateChapterClientSide(payload: GeneratePayload, apiKey: string): Promise<any> {
-  const modelName = "gemini-3.5-flash"; // standard and stable model alias
+async function tryWithSingleKey(payload: GeneratePayload, apiKey: string): Promise<any> {
+  const modelName = "gemini-2.0-flash";
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
-  
-  const promptText = buildPromptText(payload);
-  const responseSchema = getResponseSchema();
-  
+
   const requestBody = {
-    contents: [
-      {
-        parts: [
-          { text: promptText }
-        ]
-      }
-    ],
+    contents: [{ parts: [{ text: buildPromptText(payload) }] }],
     generationConfig: {
       responseMimeType: "application/json",
-      responseSchema: responseSchema,
+      responseSchema: getResponseSchema(),
       temperature: 1.0
     }
   };
 
   const response = await fetch(url, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(requestBody)
   });
 
@@ -245,9 +249,9 @@ async function generateChapterClientSide(payload: GeneratePayload, apiKey: strin
       const status = response.status;
 
       if (status === 429 || rawMsg.includes("RESOURCE_EXHAUSTED") || rawMsg.includes("quota") || rawMsg.includes("Quota")) {
-        errorMessage = "⏳ API 呼叫已達免費配額上限，請等待約 1 分鐘後再重試。";
+        errorMessage = "⏳ QUOTA";   // sentinel for rotation logic
       } else if (status === 503 || rawMsg.includes("overloaded") || rawMsg.includes("unavailable") || rawMsg.includes("UNAVAILABLE")) {
-        errorMessage = "🔄 Gemini 服務目前繁忙，請稍等幾秒後重試。";
+        errorMessage = "🔄 BUSY";    // sentinel for rotation logic
       } else if (status === 500) {
         errorMessage = "⚠️ Gemini 伺服器發生錯誤，請稍後重試。";
       } else if (status === 401 || rawMsg.includes("API_KEY_INVALID") || rawMsg.includes("invalid_key")) {
@@ -256,8 +260,7 @@ async function generateChapterClientSide(payload: GeneratePayload, apiKey: strin
         errorMessage = "🚫 API Key 無使用權限，請確認金鑰並重試。";
       } else if (status === 400) {
         errorMessage = "❌ 請求格式錯誤，請重試或重新整理頁面。";
-      } else if (rawMsg) {
-        // Trim overly long raw English messages
+      } else {
         errorMessage = `AI 回傳錯誤（${status}），請稍後重試。`;
       }
     } catch (_) {}
@@ -266,17 +269,45 @@ async function generateChapterClientSide(payload: GeneratePayload, apiKey: strin
 
   const responseData = await response.json();
   const textContent = responseData?.candidates?.[0]?.content?.parts?.[0]?.text;
-  
+
   if (!textContent) {
     throw new Error("模型未傳回有效的 JSON 內容，請重試。");
   }
 
   try {
     return JSON.parse(textContent);
-  } catch (e) {
-    console.error("Failed to parse dynamic JSON response:", textContent);
+  } catch (_) {
     throw new Error("無法解析模型傳回的 JSON 格式，請重試。");
   }
+}
+
+/**
+ * Direct client-side generation. Rotates through up to 5 keys on quota / busy errors.
+ */
+async function generateChapterClientSide(payload: GeneratePayload, apiKeys: string[]): Promise<any> {
+  const validKeys = apiKeys.map(k => k.trim()).filter(Boolean);
+  if (validKeys.length === 0) throw new Error("🔑 請先設定至少一組 Gemini API Key。");
+
+  let lastError: Error = new Error("所有 API Key 均無法使用，請稍後重試。");
+
+  for (let i = 0; i < validKeys.length; i++) {
+    try {
+      return await tryWithSingleKey(payload, validKeys[i]);
+    } catch (err: any) {
+      lastError = err;
+      const msg: string = err.message || "";
+      // Rotate to next key only on quota / service-busy errors
+      if (msg.includes("QUOTA") || msg.includes("BUSY")) {
+        if (i < validKeys.length - 1) continue;   // try next key
+        // All keys exhausted
+        throw new Error(`⏳ 所有 ${validKeys.length} 組 API Key 均已達配額上限，請等待約 1 分鐘後重試。`);
+      }
+      // For other errors (invalid key, bad request, etc.), fail immediately
+      throw err;
+    }
+  }
+
+  throw lastError;
 }
 
 /**
@@ -284,14 +315,14 @@ async function generateChapterClientSide(payload: GeneratePayload, apiKey: strin
  * Falls back to local direct call if user key is available, or uses Express proxy.
  */
 export async function generateNovelChapter(payload: GeneratePayload): Promise<any> {
-  const customKey = payload.customApiKey;
-  
-  // If custom API key is present in local, call direct Gemini API to support static GitHub deployment!
-  if (customKey && customKey.trim()) {
-    return generateChapterClientSide(payload, customKey.trim());
+  const keys = (payload.customApiKeys || []).filter(k => k.trim());
+
+  // Client-side path: use provided keys (supports static GitHub Pages deployment)
+  if (keys.length > 0) {
+    return generateChapterClientSide(payload, keys);
   }
 
-  // Otherwise, use Express server proxy
+  // Server proxy path (Express backend)
   const response = await fetch("/api/generate", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
