@@ -458,11 +458,14 @@ export default function App() {
         setCurrentArc(resolvedArc);
       }
 
-      // Merge glossaries
+      // Merge glossaries — add/update new entries, remove retired ones
       const mergedGlossaryMap = new Map<string, GlossaryItem>();
       lastPage.glossaryState.forEach(item => mergedGlossaryMap.set(item.name, item));
       if (data.glossaryUpdates && Array.isArray(data.glossaryUpdates)) {
         data.glossaryUpdates.forEach((item: GlossaryItem) => mergedGlossaryMap.set(item.name, item));
+      }
+      if (data.glossaryRemovals && Array.isArray(data.glossaryRemovals)) {
+        (data.glossaryRemovals as string[]).forEach(name => mergedGlossaryMap.delete(name));
       }
       const newGlossaryState = Array.from(mergedGlossaryMap.values());
 
@@ -552,6 +555,7 @@ export default function App() {
       const mergedMap = new Map<string, GlossaryItem>();
       lastPage.glossaryState.forEach(i => mergedMap.set(i.name, i));
       (data.glossaryUpdates || []).forEach((i: GlossaryItem) => mergedMap.set(i.name, i));
+      (data.glossaryRemovals as string[] || []).forEach(name => mergedMap.delete(name));
 
       // Update arc state if new arc
       let resolvedArc = arc;
@@ -645,6 +649,7 @@ export default function App() {
         const mergedMap = new Map<string, GlossaryItem>();
         lastPage.glossaryState.forEach(i => mergedMap.set(i.name, i));
         (data.glossaryUpdates || []).forEach((i: GlossaryItem) => mergedMap.set(i.name, i));
+        (data.glossaryRemovals as string[] || []).forEach(name => mergedMap.delete(name));
 
         const newPage: NovelPage = {
           pageNumber: nextPageNumber,
